@@ -80,4 +80,44 @@ internal static partial class Lib
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
 
+    [LibraryImport("psapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetProcessMemoryInfo(IntPtr hProcess, out ProcessMemoryCounters counters, uint size);
+    [LibraryImport("kernel32.dll")]
+    internal static partial IntPtr GetCurrentProcess();
+
+    internal static SystemErrorCodes GetLastWin32Error()
+    {
+        return (SystemErrorCodes)Marshal.GetLastWin32Error();
+    }
+}
+
+internal enum SystemErrorCodes : uint{
+    ERROR_SUCCESS = 0x0,
+    ERROR_INVALID_FUNCTION = 0x1,
+    ERROR_FILE_NOT_FOUND = 0x2,
+    ERROR_PATH_NOT_FOUND = 0x3,
+    ERROR_ACCESS_DENIED = 0x5,
+    ERROR_INVALID_HANDLE = 0x6,
+    ERROR_NOT_ENOUGH_MEMORY = 0x8,
+    ERROR_INVALID_DATA = 0xD,
+    ERROR_INVALID_DRIVE = 0xF,
+    ERROR_NO_MORE_FILES = 0x12,
+    ERROR_NOT_READY = 0x15,
+    ERROR_BAD_LENGTH = 0x18,
+    ERROR_SHARING_VIOLATION = 0x20,
+    ERROR_NOT_SUPPORTED = 0x32,
+    ERROR_FILE_EXISTS = 0x50,
+    ERROR_INVALID_PARAMETER = 0x57,
+    ERROR_CALL_NOT_IMPLEMENTED = 0x78,
+    ERROR_INSUFFICIENT_BUFFER = 0x7A,
+    ERROR_INVALID_NAME = 0x7B,
+    ERROR_BAD_PATHNAME = 0xA1,
+    ERROR_ALREADY_EXISTS = 0xB7,
+    ERROR_ENVVAR_NOT_FOUND = 0xCB,
+    ERROR_FILENAME_EXCED_RANGE = 0xCE,
+    ERROR_NO_DATA = 0xE8,
+    ERROR_PIPE_NOT_CONNECTED = 0xE9,
+    ERROR_MORE_DATA = 0xEA,
+    ERROR_NO_MORE_ITEMS = 0x103,
 }

@@ -42,7 +42,7 @@ internal struct StartupInfo
 }
 
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-struct ProcessBasicInformation
+internal struct ProcessBasicInformation
 {
     public IntPtr Reserved1;
     public IntPtr PebAddress;
@@ -50,4 +50,19 @@ struct ProcessBasicInformation
     public IntPtr Reserved3;
     public IntPtr UniquePid;
     public IntPtr MoreReserved;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct ProcessMemoryCounters
+{
+    public uint cb;
+    public uint PageFaultCount;
+    public UIntPtr PeakWorkingSetSize;
+    public UIntPtr WorkingSetSize;
+    public UIntPtr QuotaPeakPagedPoolUsage;
+    public UIntPtr QuotaPagedPoolUsage;
+    public UIntPtr QuotaPeakNonPagedPoolUsage;
+    public UIntPtr QuotaNonPagedPoolUsage;
+    public UIntPtr PagefileUsage;
+    public UIntPtr PeakPagefileUsage;
 }

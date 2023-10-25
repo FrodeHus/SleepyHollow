@@ -20,7 +20,7 @@ internal static class HollowProcess
         }
         else
         {
-            var error = Marshal.GetLastWin32Error();
+            var error = Lib.GetLastWin32Error();
             Console.WriteLine($"CreateProcess failed - error: {error}");
             return Task.CompletedTask;
         }
@@ -29,8 +29,8 @@ internal static class HollowProcess
         Console.WriteLine($"Address of entry point: 0x{entryPointAddress:X}");
 
         Lib.WriteProcessMemory(pi.hProcess, entryPointAddress, buf, buf.Length, out IntPtr nRead);
-        var writeStatus = Marshal.GetLastWin32Error();
-        if (writeStatus != 0)
+        var writeStatus = Lib.GetLastWin32Error();
+        if (writeStatus != SystemErrorCodes.ERROR_SUCCESS)
         {
             Console.WriteLine($"Error writing to process memory - error: {writeStatus}");
             return Task.CompletedTask;
@@ -45,8 +45,8 @@ internal static class HollowProcess
     static void Execute(ProcessInformation pi)
     {
         var res = Lib.ResumeThread(pi.hThread);
-        var status = Marshal.GetLastWin32Error();
-        if (status != 0)
+        var status = Lib.GetLastWin32Error();
+        if (status != SystemErrorCodes.ERROR_SUCCESS)
         {
             Console.WriteLine($"Error resuming thread - error: {status}");
             return;

