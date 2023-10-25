@@ -3,6 +3,11 @@ using System.Runtime.InteropServices;
 namespace SleepyHollow;
 
 [Flags]
+public enum OpenProcessFlags : uint
+{
+    PROCESS_ALL_ACCESS = 0x001F0FFF
+}
+[Flags]
 public enum CreateProcessFlags : uint
 {
     DEBUG_PROCESS = 0x00000001,
@@ -42,6 +47,7 @@ internal static partial class Lib
 {
     internal static UInt32 PAGE_EXECUTE_READWRITE = 0x40;
     internal static UInt32 MEM_COMMIT = 0x1000;
+    internal static UInt32 MEM_COMMIT_AND_RESERVE = 0x3000;
 
     [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -64,4 +70,14 @@ internal static partial class Lib
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool CheckRemoteDebuggerPresent(IntPtr hProcess, [MarshalAs(UnmanagedType.Bool)] ref bool isDebuggerPresent);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr OpenProcess(OpenProcessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect, uint nndPreferred);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+
 }

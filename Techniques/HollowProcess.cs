@@ -1,6 +1,10 @@
 using System.Runtime.InteropServices;
 namespace SleepyHollow;
 
+/// <summary>
+/// This class is used to create a new process in a suspended state, write a payload to the process memory, and execute the payload by resuming the thread.<br/>
+/// Technique is called "Process Hollowing" and is commonly performed by creating a process in a suspended state then unmapping/hollowing its memory, which can then be replaced with malicious code.
+/// </summary>
 internal static class HollowProcess
 {
     const int OFFSET_PE_HEADER = 0x3C;
@@ -48,7 +52,6 @@ internal static class HollowProcess
             return;
         }
 
-        Console.WriteLine("Thread resumed - payload executed");
         return;
     }
 
