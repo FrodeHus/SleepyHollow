@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$PayloadUrl
+    [string]$PayloadUrl,
     [Parameter(Mandatory=$false)]
     [string]$OutputPath = ".\SleepyHollow.exe"
 )
