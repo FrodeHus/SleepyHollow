@@ -12,7 +12,7 @@ internal static class RemoteExecution
 {
     public static async Task Run(string hostname, string cmd, string serviceName = "SensorService", bool rawCmd = false, bool debug = false)
     {
-        if (rawCmd) cmd = $"c:\\windows\\system32\\cmd.exe /c {cmd}";
+        if (!rawCmd) cmd = $"c:\\windows\\system32\\cmd.exe /c {cmd}";
         IntPtr SCMHandle = Lib.OpenSCManager(hostname, null, (uint)SCM_ACCESS.SC_MANAGER_ALL_ACCESS);
         if (SCMHandle == IntPtr.Zero)
         {
