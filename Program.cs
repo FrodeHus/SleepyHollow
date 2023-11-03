@@ -31,11 +31,11 @@ var dllCommand = new Command("dll", "Injects and runs DLL"){
     dllName
 };
 
-var hostnameOption = new Option<string>("--hostname", "The hostname to connect to");
-var cmdOption = new Option<string>("--cmd", "The command to execute");
+var hostnameArg = new Argument<string>("hostname", "The hostname to connect to");
+var cmdArg = new Argument<string>("cmd", "The command to execute");
 var remoteExecCommand = new Command("rexec", "Executes a command on a remote host"){
-    hostnameOption,
-    cmdOption
+    hostnameArg,
+    cmdArg
 };
 
 
@@ -57,7 +57,7 @@ remoteExecCommand.SetHandler(async (host, cmd, skipEvasion, debug) =>
     }
 
     await RemoteExecution.Run(host, cmd, debug: debug);
-}, hostnameOption, cmdOption, skipEvasionOption, debugOption);
+}, hostnameArg, cmdArg, skipEvasionOption, debugOption);
 
 scCommand.SetHandler(async (url, method, skipEvasion, debug, wait) =>
 {

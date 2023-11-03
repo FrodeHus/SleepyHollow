@@ -28,7 +28,7 @@ internal static class RemoteExecution
         }
         if (debug) Console.WriteLine($"Service handle: 0x{serviceHandle:X}");
         var oldBinary = GetPreviousBinaryPath(serviceHandle, debug);
-        var result = Lib.ChangeServiceConfigA(serviceHandle, 0xffffffff, 3, 0, cmd, null, null, null, null, null, null);
+        var result = Lib.ChangeServiceConfigA(serviceHandle, 0xffffffff, 0x3, 0, cmd, null, null, null, null, null, null);
         if (result == false)
         {
             Console.WriteLine("Failed to change service config. Error: {0}", Lib.GetLastWin32Error());
