@@ -34,6 +34,9 @@ internal static class RemoteExecution
         }
         _ = Lib.StartService(serviceHandle, 0, null);
 
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine("Error result: {0}", Lib.GetLastWin32Error());
+
         await Task.Delay(5000);
         result = UpdateServiceConfiguration(serviceHandle, oldBinary);
         if (!result)
