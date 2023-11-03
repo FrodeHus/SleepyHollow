@@ -42,6 +42,7 @@ function Output-Stager{
         [Parameter(Mandatory=$false)]
         [string]$OutputPath = ".\SleepyHollow.exe"
     )
+    
     if(Test-Path $OutputPath){
         $title    = "File " + $OutputPath + " already exists"
         $question = 'Are you sure you want to proceed?'
@@ -53,6 +54,8 @@ function Output-Stager{
         } else {
             exit
         }
+    } else {
+        Move-Item ".\bin\Release\net7.0\$Runtime\publish\SleepyHollow.exe" $OutputPath
     }
 }
 
