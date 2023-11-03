@@ -5,6 +5,8 @@ param(
     [string]$OutputPath = ".\SleepyHollow.exe"
 )
 
+$oldContent = Get-Content ".\Program.cs"
+
 function Replace-PayloadUrl{
     param(
         [Parameter(Mandatory=$true)]
@@ -15,6 +17,16 @@ function Replace-PayloadUrl{
     $content = Get-Content $filePath
     $newContent = $content -replace "<%URL%>", $PayloadUrl
     Set-Content $filePath $newContent
+}
+
+function Restore-Content{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$oldContent
+    )
+
+    $filePath = ".\Program.cs"
+    Set-Content $filePath $oldContent
 }
 
 function Build-Stager{
@@ -29,3 +41,4 @@ function Build-Stager{
 }
 
 Build-Stager $PayloadUrl
+Restore-Content $oldContent
