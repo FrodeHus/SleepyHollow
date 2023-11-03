@@ -76,6 +76,8 @@ internal static partial class Lib
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect, uint nndPreferred);
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
