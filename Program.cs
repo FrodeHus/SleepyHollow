@@ -36,6 +36,7 @@ var cmdArg = new Argument<string>("cmd", "The command to execute");
 var serviceNameOption = new Option<string>("--service", "The service to abuse");
 serviceNameOption.SetDefaultValue("SensorService");
 var rawCmdOption = new Option<bool>("--raw", "Execute the command without prepending cmd.exe /c");
+rawCmdOption.SetDefaultValue(false);
 
 var remoteExecCommand = new Command("rexec", "Executes a command on a remote host"){
     hostnameArg,
