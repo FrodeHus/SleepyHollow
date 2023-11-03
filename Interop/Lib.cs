@@ -86,13 +86,22 @@ internal static partial class Lib
     [LibraryImport("kernel32.dll")]
     internal static partial IntPtr GetCurrentProcess();
 
+    [LibraryImport("kernel32.dll")]
+    internal static partial uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+
+    [LibraryImport("kernel32", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+    internal static extern IntPtr GetModuleHandle(string lpModuleName);
     internal static SystemErrorCodes GetLastWin32Error()
     {
         return (SystemErrorCodes)Marshal.GetLastWin32Error();
     }
 }
 
-internal enum SystemErrorCodes : uint{
+internal enum SystemErrorCodes : uint
+{
     ERROR_SUCCESS = 0x0,
     ERROR_INVALID_FUNCTION = 0x1,
     ERROR_FILE_NOT_FOUND = 0x2,

