@@ -91,11 +91,12 @@ internal static partial class Lib
     [LibraryImport("kernel32.dll")]
     internal static partial uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 
-    [LibraryImport("kernel32", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    internal static partial IntPtr GetProcAddress(IntPtr hModule, string procName);
+    [LibraryImport("kernel32", SetLastError = true)]
+    internal static partial IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string procName);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
     internal static extern IntPtr GetModuleHandle(string lpModuleName);
+
     internal static SystemErrorCodes GetLastWin32Error()
     {
         return (SystemErrorCodes)Marshal.GetLastWin32Error();
