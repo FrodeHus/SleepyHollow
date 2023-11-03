@@ -1,4 +1,4 @@
-﻿using SleepyHollow;
+using SleepyHollow;
 
 #if !HEADLESS
 using System.CommandLine;
@@ -143,3 +143,6 @@ await rootCommand.InvokeAsync(args);
         var buf = Decoder.DecodeString(data);
         await HollowProcess.Run(buf);
 #endif
+
+
+

