@@ -13,6 +13,7 @@ var methodOption = new Option<string>(name: "--method", description: "Execution 
     "hollow"
 );
 methodOption.AddAlias("-m");
+methodOption.SetDefaultValue("hollow");
 
 var waitOptions = new Option<int>(
     name: "--wait",
