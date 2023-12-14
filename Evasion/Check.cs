@@ -54,13 +54,13 @@ internal static class EvasionCheck
             Console.WriteLine("Error getting process memory info: " + Lib.GetLastWin32Error());
             return true;
         }
-        if (pmc.WorkingSetSize <= 10000000)
+        if (pmc.WorkingSetSize <= 20000000)
         {
             return false;
         }
         else
         {
-            Console.WriteLine($"- Process memory is greater than 10MB: {pmc.WorkingSetSize}");
+            Console.WriteLine($"- Process memory is greater than 20MB: {pmc.WorkingSetSize}");
             return true;
         }
     }
