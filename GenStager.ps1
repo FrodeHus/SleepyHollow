@@ -13,7 +13,8 @@ param(
     [string]$Runtime = "win-x64"
 )
 
-$oldContent = [System.IO.File]::ReadAllText(".\Program.cs")
+$filePath = (Get-Item .).FullName + "\Program.cs"
+$oldContent = [System.IO.File]::ReadAllText($filePath)
 
 function Replace-PayloadUrl{
     param(
@@ -21,7 +22,6 @@ function Replace-PayloadUrl{
         [string]$PayloadUrl
     )
 
-    $filePath = ".\Program.cs"
     $content = Get-Content $filePath
     $newContent = $content -replace "<%URL%>", $PayloadUrl
     Set-Content $filePath $newContent
@@ -33,7 +33,6 @@ function Restore-Content{
         [string]$oldContent
     )
 
-    $filePath = ".\Program.cs"
     Set-Content $filePath $oldContent -Force
 }
 
@@ -50,12 +49,12 @@ function Output-Stager{
 
         $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
         if ($decision -eq 0) {
-            Move-Item ".\bin\Release\net7.0\$Runtime\publish\SleepyHollow.exe" $OutputPath -Force
+            Move-Item ".\bin\Release\net8.0\$Runtime\publish\SleepyHollow.exe" $OutputPath -Force
         } else {
             exit
         }
     } else {
-        Move-Item ".\bin\Release\net7.0\$Runtime\publish\SleepyHollow.exe" $OutputPath
+        Move-Item ".\bin\Release\net8.0\$Runtime\publish\SleepyHollow.exe" $OutputPath
     }
 }
 
