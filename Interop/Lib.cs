@@ -413,6 +413,17 @@ internal static partial class Lib
         uint TokenType,
         out IntPtr phNewToken
     );
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr LoadLibrary(string dllToLoad);
+
+    [DllImport("kernel32.dll")]
+    public static extern Boolean VirtualProtect(
+        IntPtr lpAddress,
+        UIntPtr dwSize,
+        UInt32 flNewProtect,
+        out UInt32 lpflOldProtect
+    );
 }
 
 internal enum SystemErrorCodes : uint
