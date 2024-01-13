@@ -117,15 +117,6 @@ struct TOKEN_USER
     public SID_AND_ATTRIBUTES User;
 }
 
-[StructLayout(LayoutKind.Sequential)]
-public struct PROCESS_INFORMATION
-{
-    public IntPtr hProcess;
-    public IntPtr hThread;
-    public int dwProcessId;
-    public int dwThreadId;
-}
-
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 public struct STARTUPINFO
 {

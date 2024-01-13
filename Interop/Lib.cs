@@ -369,7 +369,7 @@ internal static partial class Lib
         IntPtr lpEnvironment,
         string lpCurrentDirectory,
         [In] ref STARTUPINFO lpStartupInfo,
-        out PROCESS_INFORMATION lpProcessInformation
+        out ProcessInformation lpProcessInformation
     );
 
     [DllImport("kernel32.dll", SetLastError = true)]

