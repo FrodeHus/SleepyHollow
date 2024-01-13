@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace SleepyHollow;
 
@@ -7,6 +8,26 @@ public enum OpenProcessFlags : uint
 {
     PROCESS_ALL_ACCESS = 0x001F0FFF
 }
+
+[Flags]
+public enum CreationFlags
+{
+    DefaultErrorMode = 0x04000000,
+    NewConsole = 0x00000010,
+    NewProcessGroup = 0x00000200,
+    SeparateWOWVDM = 0x00000800,
+    Suspended = 0x00000004,
+    UnicodeEnvironment = 0x00000400,
+    ExtendedStartupInfoPresent = 0x00080000
+}
+
+[Flags]
+public enum LogonFlags
+{
+    WithProfile = 1,
+    NetCredentialsOnly
+}
+
 [Flags]
 public enum CreateProcessFlags : uint
 {
@@ -50,6 +71,7 @@ internal enum ACCESS_MASK : uint
     STANDARD_RIGHTS_WRITE = 0x00020000,
     STANDARD_RIGHTS_EXECUTE = 0x00020000,
 }
+
 [Flags]
 internal enum SCM_ACCESS : uint
 {
@@ -59,26 +81,38 @@ internal enum SCM_ACCESS : uint
     SC_MANAGER_LOCK = 0x00008,
     SC_MANAGER_QUERY_LOCK_STATUS = 0x00010,
     SC_MANAGER_MODIFY_BOOT_CONFIG = 0x00020,
-    SC_MANAGER_ALL_ACCESS = ACCESS_MASK.STANDARD_RIGHTS_REQUIRED |
-        SC_MANAGER_CONNECT |
-        SC_MANAGER_CREATE_SERVICE |
-        SC_MANAGER_ENUMERATE_SERVICE |
-        SC_MANAGER_LOCK |
-        SC_MANAGER_QUERY_LOCK_STATUS |
-        SC_MANAGER_MODIFY_BOOT_CONFIG,
+    SC_MANAGER_ALL_ACCESS =
+        ACCESS_MASK.STANDARD_RIGHTS_REQUIRED
+        | SC_MANAGER_CONNECT
+        | SC_MANAGER_CREATE_SERVICE
+        | SC_MANAGER_ENUMERATE_SERVICE
+        | SC_MANAGER_LOCK
+        | SC_MANAGER_QUERY_LOCK_STATUS
+        | SC_MANAGER_MODIFY_BOOT_CONFIG,
 
-    GENERIC_READ = ACCESS_MASK.STANDARD_RIGHTS_READ |
-        SC_MANAGER_ENUMERATE_SERVICE |
-        SC_MANAGER_QUERY_LOCK_STATUS,
+    GENERIC_READ =
+        ACCESS_MASK.STANDARD_RIGHTS_READ
+        | SC_MANAGER_ENUMERATE_SERVICE
+        | SC_MANAGER_QUERY_LOCK_STATUS,
 
-    GENERIC_WRITE = ACCESS_MASK.STANDARD_RIGHTS_WRITE |
-        SC_MANAGER_CREATE_SERVICE |
-        SC_MANAGER_MODIFY_BOOT_CONFIG,
+    GENERIC_WRITE =
+        ACCESS_MASK.STANDARD_RIGHTS_WRITE
+        | SC_MANAGER_CREATE_SERVICE
+        | SC_MANAGER_MODIFY_BOOT_CONFIG,
 
-    GENERIC_EXECUTE = ACCESS_MASK.STANDARD_RIGHTS_EXECUTE |
-        SC_MANAGER_CONNECT | SC_MANAGER_LOCK,
+    GENERIC_EXECUTE = ACCESS_MASK.STANDARD_RIGHTS_EXECUTE | SC_MANAGER_CONNECT | SC_MANAGER_LOCK,
 
     GENERIC_ALL = SC_MANAGER_ALL_ACCESS,
+}
+
+//This enum was huge, I cut it down to save space
+public enum TOKEN_INFORMATION_CLASS
+{
+    /// <summary>
+    /// The buffer receives a TOKEN_PRIVILEGES structure that contains the privileges of the token.
+    /// </summary>
+    TokenUser = 1,
+    TokenPrivileges = 3
 }
 
 [Flags]
@@ -94,16 +128,19 @@ internal enum SERVICE_ACCESS : uint
     SERVICE_PAUSE_CONTINUE = 0x00040,
     SERVICE_INTERROGATE = 0x00080,
     SERVICE_USER_DEFINED_CONTROL = 0x00100,
-    SERVICE_ALL_ACCESS = (STANDARD_RIGHTS_REQUIRED |
-                      SERVICE_QUERY_CONFIG |
-                      SERVICE_CHANGE_CONFIG |
-                      SERVICE_QUERY_STATUS |
-                      SERVICE_ENUMERATE_DEPENDENTS |
-                      SERVICE_START |
-                      SERVICE_STOP |
-                      SERVICE_PAUSE_CONTINUE |
-                      SERVICE_INTERROGATE |
-                      SERVICE_USER_DEFINED_CONTROL)
+    SERVICE_ALL_ACCESS =
+        (
+            STANDARD_RIGHTS_REQUIRED
+            | SERVICE_QUERY_CONFIG
+            | SERVICE_CHANGE_CONFIG
+            | SERVICE_QUERY_STATUS
+            | SERVICE_ENUMERATE_DEPENDENTS
+            | SERVICE_START
+            | SERVICE_STOP
+            | SERVICE_PAUSE_CONTINUE
+            | SERVICE_INTERROGATE
+            | SERVICE_USER_DEFINED_CONTROL
+        )
 }
 
 internal static partial class Lib
@@ -112,42 +149,109 @@ internal static partial class Lib
     internal static UInt32 MEM_COMMIT = 0x1000;
     internal static UInt32 MEM_COMMIT_AND_RESERVE = 0x3000;
 
-    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport(
+        "kernel32.dll",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool CreateProcessW(string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandles, CreateProcessFlags dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, ref StartupInfo lpStartupInfo, out ProcessInformation lpProcessInformation);
+    internal static partial bool CreateProcessW(
+        string lpApplicationName,
+        string lpCommandLine,
+        IntPtr lpProcessAttributes,
+        IntPtr lpThreadAttributes,
+        [MarshalAs(UnmanagedType.Bool)] bool bInheritHandles,
+        CreateProcessFlags dwCreationFlags,
+        IntPtr lpEnvironment,
+        string lpCurrentDirectory,
+        ref StartupInfo lpStartupInfo,
+        out ProcessInformation lpProcessInformation
+    );
 
     [LibraryImport("ntdll.dll")]
-    internal static partial int ZwQueryInformationProcess(IntPtr hProcess, int procInformationClass, ref ProcessBasicInformation procInformation, uint ProcInfoLen, ref uint retlen);
+    internal static partial int ZwQueryInformationProcess(
+        IntPtr hProcess,
+        int procInformationClass,
+        ref ProcessBasicInformation procInformation,
+        uint ProcInfoLen,
+        ref uint retlen
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+    internal static partial bool ReadProcessMemory(
+        IntPtr hProcess,
+        IntPtr lpBaseAddress,
+        byte[] lpBuffer,
+        int dwSize,
+        out IntPtr lpNumberOfBytesRead
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesWritten);
+    internal static partial bool WriteProcessMemory(
+        IntPtr hProcess,
+        IntPtr lpBaseAddress,
+        byte[] lpBuffer,
+        int dwSize,
+        out IntPtr lpNumberOfBytesWritten
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial uint ResumeThread(IntPtr hThread);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool CheckRemoteDebuggerPresent(IntPtr hProcess, [MarshalAs(UnmanagedType.Bool)] ref bool isDebuggerPresent);
+    internal static partial bool CheckRemoteDebuggerPresent(
+        IntPtr hProcess,
+        [MarshalAs(UnmanagedType.Bool)] ref bool isDebuggerPresent
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr OpenProcess(OpenProcessFlags dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, int dwProcessId);
+    internal static partial IntPtr OpenProcess(
+        OpenProcessFlags dwDesiredAccess,
+        [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
+        int dwProcessId
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect, uint nndPreferred);
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
+    internal static partial IntPtr VirtualAllocExNuma(
+        IntPtr hProcess,
+        IntPtr lpAddress,
+        uint dwSize,
+        uint flAllocationType,
+        uint flProtect,
+        uint nndPreferred
+    );
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+    internal static partial IntPtr VirtualAllocEx(
+        IntPtr hProcess,
+        IntPtr lpAddress,
+        uint dwSize,
+        uint flAllocationType,
+        uint flProtect
+    );
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    internal static partial IntPtr CreateRemoteThread(
+        IntPtr hProcess,
+        IntPtr lpThreadAttributes,
+        uint dwStackSize,
+        IntPtr lpStartAddress,
+        IntPtr lpParameter,
+        uint dwCreationFlags,
+        IntPtr lpThreadId
+    );
 
     [LibraryImport("psapi.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool GetProcessMemoryInfo(IntPtr hProcess, out ProcessMemoryCounters counters, uint size);
+    internal static partial bool GetProcessMemoryInfo(
+        IntPtr hProcess,
+        out ProcessMemoryCounters counters,
+        uint size
+    );
+
     [LibraryImport("kernel32.dll")]
     internal static partial IntPtr GetCurrentProcess();
 
@@ -155,31 +259,160 @@ internal static partial class Lib
     internal static partial uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 
     [LibraryImport("kernel32", SetLastError = true)]
-    internal static partial IntPtr GetProcAddress(IntPtr hModule, [MarshalAs(UnmanagedType.LPStr)] string procName);
+    internal static partial IntPtr GetProcAddress(
+        IntPtr hModule,
+        [MarshalAs(UnmanagedType.LPStr)] string procName
+    );
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
     internal static extern IntPtr GetModuleHandle(string lpModuleName);
 
-    [LibraryImport("advapi32.dll", EntryPoint = "OpenSCManagerW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    internal static partial IntPtr OpenSCManager(string lpMachineName, string lpDatabaseName, uint dwDesiredAccess);
+    [LibraryImport(
+        "advapi32.dll",
+        EntryPoint = "OpenSCManagerW",
+        SetLastError = true,
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    internal static partial IntPtr OpenSCManager(
+        string lpMachineName,
+        string lpDatabaseName,
+        uint dwDesiredAccess
+    );
 
     [LibraryImport("advapi32.dll", SetLastError = true, EntryPoint = "OpenServiceA")]
-    internal static partial IntPtr OpenService(IntPtr hSCManager, [MarshalAs(UnmanagedType.LPStr)] string lpServiceName, uint dwDesiredAccess);
+    internal static partial IntPtr OpenService(
+        IntPtr hSCManager,
+        [MarshalAs(UnmanagedType.LPStr)] string lpServiceName,
+        uint dwDesiredAccess
+    );
 
     [DllImport("advapi32.dll", EntryPoint = "ChangeServiceConfig")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool ChangeServiceConfigA(IntPtr hService, uint dwServiceType, int dwStartType, int dwErrorControl, string lpBinaryPathName, string lpLoadOrderGroup, string lpdwTagId, string lpDependencies, string lpServiceStartName, string lpPassword, string lpDisplayName);
+    public static extern bool ChangeServiceConfigA(
+        IntPtr hService,
+        uint dwServiceType,
+        int dwStartType,
+        int dwErrorControl,
+        string lpBinaryPathName,
+        string lpLoadOrderGroup,
+        string lpdwTagId,
+        string lpDependencies,
+        string lpServiceStartName,
+        string lpPassword,
+        string lpDisplayName
+    );
 
     [DllImport("advapi32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool StartService(IntPtr hService, int dwNumServiceArgs, string[] lpServiceArgVectors);
+    public static extern bool StartService(
+        IntPtr hService,
+        int dwNumServiceArgs,
+        string[] lpServiceArgVectors
+    );
 
-    [LibraryImport("advapi32.dll", SetLastError = true, EntryPoint = "QueryServiceConfigW", StringMarshalling = StringMarshalling.Utf16)]
-    internal static partial int QueryServiceConfig(IntPtr hService, IntPtr lpServiceConfig, int cbBufSize, ref int bytesNeeded);
+    [LibraryImport(
+        "advapi32.dll",
+        SetLastError = true,
+        EntryPoint = "QueryServiceConfigW",
+        StringMarshalling = StringMarshalling.Utf16
+    )]
+    internal static partial int QueryServiceConfig(
+        IntPtr hService,
+        IntPtr lpServiceConfig,
+        int cbBufSize,
+        ref int bytesNeeded
+    );
+
     internal static SystemErrorCodes GetLastWin32Error()
     {
         return (SystemErrorCodes)Marshal.GetLastWin32Error();
     }
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool GetTokenInformation(
+        IntPtr TokenHandle,
+        TOKEN_INFORMATION_CLASS TokenInformationClass,
+        IntPtr TokenInformation,
+        int TokenInformationLength,
+        ref int ReturnLength
+    );
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool LookupPrivilegeName(
+        string lpSystemName,
+        IntPtr lpLuid,
+        StringBuilder lpName,
+        ref int cchName
+    );
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool RevertToSelf();
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetSystemDirectory([Out] StringBuilder lpBuffer, uint uSize);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    public static extern bool CreateEnvironmentBlock(
+        out IntPtr lpEnvironment,
+        IntPtr hToken,
+        bool bInherit
+    );
+
+    [DllImport("advapi32", SetLastError = true, CharSet = CharSet.Unicode)]
+    public static extern bool CreateProcessWithTokenW(
+        IntPtr hToken,
+        UInt32 dwLogonFlags,
+        string lpApplicationName,
+        string lpCommandLine,
+        UInt32 dwCreationFlags,
+        IntPtr lpEnvironment,
+        string lpCurrentDirectory,
+        [In] ref STARTUPINFO lpStartupInfo,
+        out PROCESS_INFORMATION lpProcessInformation
+    );
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr CreateNamedPipe(
+        string lpName,
+        uint dwOpenMode,
+        uint dwPipeMode,
+        uint nMaxInstances,
+        uint nOutBufferSize,
+        uint nInBufferSize,
+        uint nDefaultTimeOut,
+        IntPtr lpSecurityAttributes
+    );
+
+    [DllImport("kernel32.dll")]
+    public static extern bool ConnectNamedPipe(IntPtr hNamedPipe, IntPtr lpOverlapped);
+
+    [DllImport("advapi32.dll")]
+    public static extern bool ImpersonateNamedPipeClient(IntPtr hNamedPipe);
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetCurrentThread();
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    public static extern bool OpenThreadToken(
+        IntPtr ThreadHandle,
+        uint DesiredAccess,
+        bool OpenAsSelf,
+        out IntPtr TokenHandle
+    );
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    public static extern bool ConvertSidToStringSid(IntPtr pSid, out IntPtr ptrSid);
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern bool DuplicateTokenEx(
+        IntPtr hExistingToken,
+        uint dwDesiredAccess,
+        IntPtr lpTokenAttributes,
+        uint ImpersonationLevel,
+        uint TokenType,
+        out IntPtr phNewToken
+    );
 }
 
 internal enum SystemErrorCodes : uint

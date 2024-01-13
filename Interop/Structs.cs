@@ -18,6 +18,7 @@ internal struct ProcessInformation
     public int dwProcessId;
     public int dwThreadId;
 }
+
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
 internal struct StartupInfo
 {
@@ -79,4 +80,71 @@ internal struct QueryServiceConfigStruct
     public IntPtr dependencies;
     public IntPtr startName;
     public IntPtr displayName;
+}
+
+public struct TOKEN_PRIVILEGES
+{
+    public uint PrivilegeCount;
+
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 35)]
+    public LUID_AND_ATTRIBUTES[] Privileges;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct LUID_AND_ATTRIBUTES
+{
+    public LUID Luid;
+    public uint Attributes;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct LUID
+{
+    public uint LowPart;
+    public int HighPart;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+struct SID_AND_ATTRIBUTES
+{
+    public IntPtr Sid;
+    public uint Attributes;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+struct TOKEN_USER
+{
+    public SID_AND_ATTRIBUTES User;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct PROCESS_INFORMATION
+{
+    public IntPtr hProcess;
+    public IntPtr hThread;
+    public int dwProcessId;
+    public int dwThreadId;
+}
+
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+public struct STARTUPINFO
+{
+    public Int32 cb;
+    public string lpReserved;
+    public string lpDesktop;
+    public string lpTitle;
+    public Int32 dwX;
+    public Int32 dwY;
+    public Int32 dwXSize;
+    public Int32 dwYSize;
+    public Int32 dwXCountChars;
+    public Int32 dwYCountChars;
+    public Int32 dwFillAttribute;
+    public Int32 dwFlags;
+    public Int16 wShowWindow;
+    public Int16 cbReserved2;
+    public IntPtr lpReserved2;
+    public IntPtr hStdInput;
+    public IntPtr hStdOutput;
+    public IntPtr hStdError;
 }
