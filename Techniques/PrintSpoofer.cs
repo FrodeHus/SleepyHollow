@@ -33,7 +33,7 @@ internal static class PrintSpoofer
             $"\\\\{computerName} \\\\{computerName}/pipe/{pipeName}"
         );
         var tasks = new List<Task>
-        {
+        { 
             Task.Run(async () => await Spoof(pipe, payloadUrl, executeCmd)),
             Task.Run(async () =>
             {

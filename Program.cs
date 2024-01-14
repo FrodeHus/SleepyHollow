@@ -1,4 +1,5 @@
 ﻿using SleepyHollow;
+
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
 {
@@ -11,6 +12,10 @@ var commands = new Dictionary<string, Dictionary<string, string>>
             { "payload", "path/URL to payload (ignored if --cmd is used)" },
             { "cmd", "command to execute after impersonation (optional)" }
         }
+    },
+    {
+        "uac",
+        new Dictionary<string, string> { { "cmd", "command to execute as Administrator" } }
     },
     {
         "sc",
@@ -152,6 +157,10 @@ switch (options["command"])
         var service = options.ContainsKey("service") ? options["service"] : "SensorService";
         var raw = options.ContainsKey("raw") && options["raw"] == "true";
         await RemoteExecution.Run(host, cmd, serviceName: service, rawCmd: raw);
+        break;
+    case "uac":
+        var uacCmd = options["cmd"];
+        UACBypass.RunAsAdministrator(uacCmd);
         break;
     default:
         Console.WriteLine($"Unknown command {options["command"]}");
