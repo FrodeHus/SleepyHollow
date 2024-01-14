@@ -5,9 +5,9 @@ param(
     [string]$OutputPath = ".\SleepyHollow.exe",
     [Parameter(Mandatory=$false, HelpMessage="Technique to use for stager")]
     [ValidateSet("Inject", "Hollow")]
+    [string]$Technique = "Hollow",
     [Parameter(Mandatory=$false, HelpMessage="Attempt impersionation first if available")]
     [switch]$Impersonate,
-    [string]$Technique = "Hollow",
     [Parameter(Mandatory=$false, HelpMessage="Disable sandbox evasion")]
     [switch]$DisableSandboxEvasion,
     [Parameter(Mandatory=$false)]
