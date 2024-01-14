@@ -8,7 +8,7 @@ var commands = new Dictionary<string, Dictionary<string, string>>
         "spool",
         new Dictionary<string, string>
         {
-            { "pipe", "name of pipe (optional - defaults to 'pwn')" },
+            { "pipe", "name of pipe (optional - will autogenerate name)" },
             { "payload", "path/URL to payload (ignored if --cmd is used)" },
             { "cmd", "command to execute after impersonation (optional)" }
         }
@@ -114,7 +114,7 @@ switch (options["command"])
         }
         break;
     case "spool":
-        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "pwn";
+        var pipeName = options.ContainsKey("pipe") ? options["pipe"] :null;
         var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
         var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
         if (payloadUrl == null && executeCmd == null)

