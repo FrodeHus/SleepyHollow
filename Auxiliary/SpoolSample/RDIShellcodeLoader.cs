@@ -791,7 +791,7 @@ public static class RDILoader
 
         // 0x30627745 - 'SayHello' - FunctionToHash.py (Meh, I'm too lazy to change this)
         shellcode = RDILoader.ConvertToShellcode(dll, 0x30627745, argumentBytes, 0);
-        Console.WriteLine("[+] Converted DLL to shellcode");
+        PrintDebug("[+] Converted DLL to shellcode");
 
         GCHandle scHandle = GCHandle.Alloc(shellcode, GCHandleType.Pinned);
         IntPtr scPointer = scHandle.AddrOfPinnedObject();
@@ -808,14 +808,14 @@ public static class RDILoader
             )
         )
         {
-            Console.WriteLine("[!] Failed to set memory flags");
+            PrintDebug("[!] Failed to set memory flags");
             return;
         }
 
         ReflectiveLoader reflectiveLoader = (ReflectiveLoader)
             Marshal.GetDelegateForFunctionPointer(scPointer, typeof(ReflectiveLoader));
 
-        Console.WriteLine("[+] Executing RDI");
+        PrintDebug("[+] Executing RDI");
 
         IntPtr peLocation = reflectiveLoader();
 
@@ -830,9 +830,15 @@ public static class RDILoader
             GCHandle userDataHandle = GCHandle.Alloc(argumentBytes, GCHandleType.Pinned);
             IntPtr userDataPointer = userDataHandle.AddrOfPinnedObject();
 
-            Console.WriteLine("[+] Calling exported function");
+            PrintDebug("[+] Calling exported function");
 
             exportedFunction(userDataPointer, (uint)argumentBytes.Length);
         }
+    }
+
+    private static void PrintDebug(string message)
+    {
+        if (SleepyHollow.RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine(message);
     }
 }

