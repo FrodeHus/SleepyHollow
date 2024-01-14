@@ -387,6 +387,9 @@ internal static partial class Lib
     [DllImport("kernel32.dll")]
     public static extern bool ConnectNamedPipe(IntPtr hNamedPipe, IntPtr lpOverlapped);
 
+    [DllImport("kernel32.dll")]
+    public static extern bool DisconnectNamedPipe(IntPtr hNamedPipe);
+
     [DllImport("advapi32.dll")]
     public static extern bool ImpersonateNamedPipeClient(IntPtr hNamedPipe);
 

