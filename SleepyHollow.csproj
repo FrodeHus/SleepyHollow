@@ -12,6 +12,7 @@
     <StackTraceSupport>false</StackTraceSupport>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <PublishAot>true</PublishAot>
+    <NoWarn>CA1416,IL3050</NoWarn>
     <DefineConstants>$(Variant)</DefineConstants>
    </PropertyGroup>
 
