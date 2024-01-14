@@ -143,19 +143,18 @@ internal enum SERVICE_ACCESS : uint
         )
 }
 
-internal static partial class Lib
+internal static class Lib
 {
     internal static UInt32 PAGE_EXECUTE_READWRITE = 0x40;
     internal static UInt32 MEM_COMMIT = 0x1000;
     internal static UInt32 MEM_COMMIT_AND_RESERVE = 0x3000;
 
-    [LibraryImport(
+    [DllImport(
         "kernel32.dll",
-        SetLastError = true,
-        StringMarshalling = StringMarshalling.Utf16
+        SetLastError = true        
     )]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool CreateProcessW(
+    internal static extern bool CreateProcessW(
         string lpApplicationName,
         string lpCommandLine,
         IntPtr lpProcessAttributes,
@@ -168,8 +167,8 @@ internal static partial class Lib
         out ProcessInformation lpProcessInformation
     );
 
-    [LibraryImport("ntdll.dll")]
-    internal static partial int ZwQueryInformationProcess(
+    [DllImport("ntdll.dll")]
+    internal static extern int ZwQueryInformationProcess(
         IntPtr hProcess,
         int procInformationClass,
         ref ProcessBasicInformation procInformation,
@@ -177,9 +176,9 @@ internal static partial class Lib
         ref uint retlen
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool ReadProcessMemory(
+    internal static extern bool ReadProcessMemory(
         IntPtr hProcess,
         IntPtr lpBaseAddress,
         byte[] lpBuffer,
@@ -187,9 +186,9 @@ internal static partial class Lib
         out IntPtr lpNumberOfBytesRead
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool WriteProcessMemory(
+    internal static extern bool WriteProcessMemory(
         IntPtr hProcess,
         IntPtr lpBaseAddress,
         byte[] lpBuffer,
@@ -197,25 +196,25 @@ internal static partial class Lib
         out IntPtr lpNumberOfBytesWritten
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial uint ResumeThread(IntPtr hThread);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern uint ResumeThread(IntPtr hThread);
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool CheckRemoteDebuggerPresent(
+    internal static extern bool CheckRemoteDebuggerPresent(
         IntPtr hProcess,
         [MarshalAs(UnmanagedType.Bool)] ref bool isDebuggerPresent
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr OpenProcess(
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern IntPtr OpenProcess(
         OpenProcessFlags dwDesiredAccess,
         [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
         int dwProcessId
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr VirtualAllocExNuma(
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern IntPtr VirtualAllocExNuma(
         IntPtr hProcess,
         IntPtr lpAddress,
         uint dwSize,
@@ -224,8 +223,8 @@ internal static partial class Lib
         uint nndPreferred
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr VirtualAllocEx(
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern IntPtr VirtualAllocEx(
         IntPtr hProcess,
         IntPtr lpAddress,
         uint dwSize,
@@ -233,8 +232,8 @@ internal static partial class Lib
         uint flProtect
     );
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial IntPtr CreateRemoteThread(
+    [DllImport("kernel32.dll", SetLastError = true)]
+    internal static extern IntPtr CreateRemoteThread(
         IntPtr hProcess,
         IntPtr lpThreadAttributes,
         uint dwStackSize,
@@ -244,22 +243,22 @@ internal static partial class Lib
         IntPtr lpThreadId
     );
 
-    [LibraryImport("psapi.dll", SetLastError = true)]
+    [DllImport("psapi.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool GetProcessMemoryInfo(
+    internal static extern bool GetProcessMemoryInfo(
         IntPtr hProcess,
         out ProcessMemoryCounters counters,
         uint size
     );
 
-    [LibraryImport("kernel32.dll")]
-    internal static partial IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll")]
+    internal static extern IntPtr GetCurrentProcess();
 
-    [LibraryImport("kernel32.dll")]
-    internal static partial uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+    [DllImport("kernel32.dll")]
+    internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 
-    [LibraryImport("kernel32", SetLastError = true)]
-    internal static partial IntPtr GetProcAddress(
+    [DllImport("kernel32", SetLastError = true)]
+    internal static extern IntPtr GetProcAddress(
         IntPtr hModule,
         [MarshalAs(UnmanagedType.LPStr)] string procName
     );
@@ -267,20 +266,19 @@ internal static partial class Lib
     [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
     internal static extern IntPtr GetModuleHandle(string lpModuleName);
 
-    [LibraryImport(
+    [DllImport(
         "advapi32.dll",
         EntryPoint = "OpenSCManagerW",
-        SetLastError = true,
-        StringMarshalling = StringMarshalling.Utf16
+        SetLastError = true
     )]
-    internal static partial IntPtr OpenSCManager(
+    internal static extern IntPtr OpenSCManager(
         string lpMachineName,
         string lpDatabaseName,
         uint dwDesiredAccess
     );
 
-    [LibraryImport("advapi32.dll", SetLastError = true, EntryPoint = "OpenServiceA")]
-    internal static partial IntPtr OpenService(
+    [DllImport("advapi32.dll", SetLastError = true, EntryPoint = "OpenServiceA")]
+    internal static extern IntPtr OpenService(
         IntPtr hSCManager,
         [MarshalAs(UnmanagedType.LPStr)] string lpServiceName,
         uint dwDesiredAccess
@@ -310,13 +308,12 @@ internal static partial class Lib
         string[] lpServiceArgVectors
     );
 
-    [LibraryImport(
+    [DllImport(
         "advapi32.dll",
         SetLastError = true,
-        EntryPoint = "QueryServiceConfigW",
-        StringMarshalling = StringMarshalling.Utf16
+        EntryPoint = "QueryServiceConfigW"
     )]
-    internal static partial int QueryServiceConfig(
+    internal static extern int QueryServiceConfig(
         IntPtr hService,
         IntPtr lpServiceConfig,
         int cbBufSize,
