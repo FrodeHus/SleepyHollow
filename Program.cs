@@ -4,10 +4,10 @@ var commands = new Dictionary<string, Dictionary<string, string>>
 {
     { "user", new Dictionary<string, string>() },
     {
-        "printspoofer",
+        "spool",
         new Dictionary<string, string>
         {
-            { "pipe", "name of pipe to" },
+            { "pipe", "name of pipe (optional - defaults to 'pwn')" },
             { "payload", "path/URL to payload (ignored if --cmd is used)" },
             { "cmd", "command to execute after impersonation (optional)" }
         }
@@ -108,7 +108,7 @@ switch (options["command"])
             Console.WriteLine($"  {kvp.Key, -35}: {(kvp.Value ? "Enabled" : "Disabled"), 10}");
         }
         break;
-    case "printspoofer":
+    case "spool":
         var pipeName = options.ContainsKey("pipe") ? options["pipe"] : "pwn";
         var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
         var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
