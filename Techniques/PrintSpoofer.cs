@@ -110,7 +110,7 @@ internal static class PrintSpoofer
                 _ = Lib.CreateEnvironmentBlock(out nint env, hSystemToken, false);
 
                 var name = WindowsIdentity.GetCurrent().Name;
-                PrintDebug("Impersonated user is: {name}");
+                PrintDebug($"Impersonated user is: {name}");
 
                 Lib.RevertToSelf();
                 var si = new STARTUPINFO();
