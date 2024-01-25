@@ -5,7 +5,11 @@ namespace SleepyHollow;
 
 internal static class EvasionCheck
 {
-    internal static bool Detected => IsDebuggerPresent() || IsFirstEventLogLessThanDayOld() || IsTimeFastForwarded() || CheckProcessMemory();
+    internal static bool Detected =>
+        IsDebuggerPresent()
+        || IsFirstEventLogLessThanDayOld()
+        || IsTimeFastForwarded()
+        || CheckProcessMemory();
 
     internal static bool IsTimeFastForwarded()
     {
@@ -24,15 +28,23 @@ internal static class EvasionCheck
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            EventLog log = new("System");
-
-            if (log.Entries.Count > 0)
+            try
             {
-                var firstEvent = log.Entries[0];
-                var age = DateTime.Now - firstEvent.TimeGenerated;
+                EventLog log = new("System");
 
-                var freshEventLog = age.TotalDays < 1;
-                return freshEventLog;
+                if (log.Entries.Count > 0)
+                {
+                    var firstEvent = log.Entries[0];
+                    var age = DateTime.Now - firstEvent.TimeGenerated;
+
+                    var freshEventLog = age.TotalDays < 1;
+                    return freshEventLog;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (RuntimeConfig.IsDebugEnabled)
+                    Console.WriteLine($"Error checking event log: {ex.Message}");
             }
         }
         return false;
@@ -47,7 +59,6 @@ internal static class EvasionCheck
 
     internal static bool CheckProcessMemory()
     {
-
         var size = (uint)Marshal.SizeOf<ProcessMemoryCounters>();
         if (!Lib.GetProcessMemoryInfo(Lib.GetCurrentProcess(), out ProcessMemoryCounters pmc, size))
         {
