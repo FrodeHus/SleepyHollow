@@ -153,6 +153,7 @@ internal static partial class Lib
     internal static UInt32 PAGE_NOACCESS = 0x01;
     internal static UInt32 PAGE_WRITECOPY = 0x08;
     internal static UInt32 MEM_COMMIT = 0x1000;
+    internal static UInt32 MEM_RESERVE = 0x2000;
     internal static UInt32 MEM_COMMIT_AND_RESERVE = 0x3000;
 
     [LibraryImport(
