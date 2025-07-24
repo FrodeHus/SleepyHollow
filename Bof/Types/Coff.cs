@@ -199,20 +199,20 @@ internal class Coff : IDisposable
         if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_STATIC && symbol.Value != 0)
         {
             symbolOffset = (int)symbol.Value;
-}
+        }
         else if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_EXTERNAL && symbol.SectionNumber != 0)
         {
-    symbolOffset = (int)symbol.Value;
-}
+            symbolOffset = (int)symbol.Value;
+        }
         else
         {
-    symbolOffset = Marshal.ReadInt32(relocationAddress);
+            symbolOffset = Marshal.ReadInt32(relocationAddress);
         }
-    var addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
+        var addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
         PatchRelocation(relocation, sectionAddress, new IntPtr(addr));
 
         if (RuntimeConfig.IsDebugEnabled)
-        Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
+            Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
     }
     private static void PatchRelocation(ImageRelocation relocation, IntPtr sectionAddress, IntPtr symbolAddress)
     {
@@ -271,7 +271,7 @@ internal class Coff : IDisposable
         return entryAddress;
     }
 
-    
+
     #endregion
 
     #region Symbol & Utility
