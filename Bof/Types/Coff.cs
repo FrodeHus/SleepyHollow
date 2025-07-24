@@ -46,7 +46,6 @@ internal class Coff
         SetBOFVariables();
         ResolveAllRelocations();
         var entryAddress = ResolveEntryPoint("go");
-        SetPermissionsForSections();
         try
         {
             ExecuteEntryPoint(entryAddress);
@@ -129,32 +128,6 @@ internal class Coff
         return (address, (uint)(pagesAllocated * Environment.SystemPageSize));
     }
 
-    private void SetPermissionsForSections()
-    {
-        for (var i = 0; i < _sectionHeaders.Count; i++)
-        {
-            var section = _sectionHeaders[i];
-            var sectionAddress = _sectionAddresses[i];
-            var sectionName = System.Text.Encoding.ASCII.GetString(section.Name).TrimEnd('\0');
-            int sectionPages = (int)((section.SizeOfRawData + Environment.SystemPageSize - 1) / Environment.SystemPageSize);
-            int sectionMemorySize = sectionPages * Environment.SystemPageSize;
-            var (x, r, w) = (section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_EXECUTE),
-                             section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_READ),
-                             section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_WRITE));
-            uint pagePermissions = x && r && w ? Lib.PAGE_EXECUTE_READWRITE :
-                                  x && r && !w ? Lib.PAGE_EXECUTE_READ :
-                                  x && !r && !w ? Lib.PAGE_EXECUTE :
-                                  !x && r && w ? Lib.PAGE_READWRITE :
-                                  !x && r && !w ? Lib.PAGE_READONLY :
-                                  !x && !r && !w ? Lib.PAGE_NOACCESS : 0;
-
-            if (pagePermissions == 0)
-                throw new InvalidOperationException($"Invalid page permissions for section: {section.Name}");
-            if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Setting permissions for section '{sectionName}' at address 0x{sectionAddress:X}, Size: {sectionMemorySize}, Permissions: {pagePermissions}");
-            Lib.VirtualProtect(sectionAddress, (UIntPtr)sectionMemorySize, pagePermissions, out uint _);
-        }
-    }
     #endregion
 
     #region Relocation & Entry Point
@@ -307,14 +280,9 @@ internal class Coff
         GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>(entryAddress);
         try
         {
+            if(RuntimeConfig.IsDebugEnabled)
+                Console.WriteLine("==> [BOF Output]");
             goFunc();
-            //var thread = Lib.CreateThread(IntPtr.Zero,
-            //                              0,
-            //                              entryAddress,
-            //                              IntPtr.Zero,
-            //                              0,
-            //                              IntPtr.Zero);
-            //var response = Lib.WaitForSingleObject(thread, 200);
         }
         catch (Exception ex)
         {

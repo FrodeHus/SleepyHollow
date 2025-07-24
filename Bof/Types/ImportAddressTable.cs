@@ -13,8 +13,8 @@ internal class ImportAddressTable
 
     public IntPtr AddImportAddress(string importName, IntPtr address)
     {
-        Marshal.WriteInt64(_iatAddress + (_importAddresses.Count * Environment.SystemPageSize), address.ToInt64());
-        _importAddresses[importName] = _iatAddress + (_importAddresses.Count * 8);
+        Marshal.WriteInt64(_iatAddress + (_importAddresses.Count * sizeof(Int64)), address.ToInt64());
+        _importAddresses[importName] = _iatAddress + (_importAddresses.Count * sizeof(Int64));
         return _importAddresses[importName];
     }
 
