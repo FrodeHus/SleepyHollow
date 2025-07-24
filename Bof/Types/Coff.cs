@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace SleepyHollow.Bof.Types;
 
@@ -42,6 +43,7 @@ internal class Coff
         ValidateHeaderCounts();
 
         _baseAddress = WriteSectionsToMemory();
+        SetBOFVariables();
         ResolveAllRelocations();
         var entryAddress = ResolveEntryPoint("go");
         SetPermissionsForSections();
@@ -162,8 +164,6 @@ internal class Coff
         {
             var sectionHeader = _sectionHeaders[i];
             var sectionAddress = _sectionAddresses[i];
-            if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Resolving {sectionHeader.NumberOfRelocations} relocations for section: {System.Text.Encoding.ASCII.GetString(sectionHeader.Name)}");
             ResolveRelocations(sectionHeader, sectionAddress);
         }
     }
@@ -182,15 +182,13 @@ internal class Coff
                 throw new Exception($"Relocation symbol index out of range: {relocation.SymbolTableIndex} - total symbols: {_symbols.Count}");
             var symbol = _symbols[(int)relocation.SymbolTableIndex];
             var symbolName = LookupSymbolName(symbol);
-            if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Relocation {i}: Symbol Name: {symbolName} - Type: {symbol.Type} - Storage Class: {symbol.StorageClass}");
             if (symbol.SectionNumber == ImageSectionNumber.IMAGE_SYM_UNDEFINED)
             {
                 RelocateExternalSymbol(sectionAddress, symbol, relocation);
             }
             else
             {
-                RelocateInternalSymbol(symbol, relocation);
+                RelocateInternalSymbol(sectionAddress, symbol, relocation);
             }
         }
     }
@@ -225,9 +223,9 @@ internal class Coff
             Console.WriteLine($"Relocated external symbol '{baseSymbolName}' to address: 0x{functionAddress:X} at relocation address: 0x{relocationAddress:X}");
     }
 
-    private void RelocateInternalSymbol(ImageSymbol symbol, ImageRelocation relocation)
+    private void RelocateInternalSymbol(IntPtr sectionAddress, ImageSymbol symbol, ImageRelocation relocation)
     {
-        var relocationAddress = _sectionAddresses[(int)symbol.SectionNumber - 1] + (int)relocation.VirtualAddress;
+        var relocationAddress = sectionAddress + (int)relocation.VirtualAddress;
         int symbolOffset;
         if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_STATIC && symbol.Value != 0)
         {
@@ -242,18 +240,18 @@ internal class Coff
             symbolOffset = Marshal.ReadInt32(relocationAddress);
         }
 
-        IntPtr addr;
+        Int64 addr;
         switch (relocation.Type)
         {
             case ImageRelocationType.IMAGE_REL_AMD64_REL32:
 
-                addr = symbolOffset + (int)_sectionAddresses[(int)symbol.SectionNumber - 1];
+                addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
                 Marshal.WriteInt32(relocationAddress,
                                    (int)((addr - 4) - relocationAddress.ToInt64()));
 
                 break;
             case ImageRelocationType.IMAGE_REL_AMD64_ADDR32NB:
-                addr = symbolOffset + (int)_sectionAddresses[(int)symbol.SectionNumber - 1];
+                addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
                 Marshal.WriteInt32(relocationAddress,
                                    (int)(addr - relocationAddress.ToInt64()));
                 break;
@@ -265,6 +263,30 @@ internal class Coff
             Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
     }
 
+    private void SetBOFVariables()
+    {
+        foreach(var symbol in _symbols)
+        {
+            var symbolName = LookupSymbolName(symbol);
+            if (symbolName == "debug")
+            {
+                var symbol_addr = new IntPtr(_sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64() + symbol.Value);
+
+                if (RuntimeConfig.IsDebugEnabled)
+                {
+                    Marshal.WriteInt32(symbol_addr, 1);
+                }
+                else
+                {
+                    Marshal.WriteInt32(symbol_addr, 0);
+                }
+
+                if (RuntimeConfig.IsDebugEnabled)
+                    Console.WriteLine($"Set debug variable '{symbolName}' to {(RuntimeConfig.IsDebugEnabled ? 1 : 0)} at address: {symbol_addr:X}");
+            }
+        }
+    }
+
     private IntPtr ResolveEntryPoint(string entryPointName)
     {
         if (string.IsNullOrEmpty(entryPointName))
@@ -272,7 +294,7 @@ internal class Coff
         var symbol = _symbols.FirstOrDefault(s => LookupSymbolName(s) == entryPointName);
         if (symbol.SectionNumber == ImageSectionNumber.IMAGE_SYM_UNDEFINED)
             throw new InvalidOperationException($"Entry point '{entryPointName}' is an external reference and cannot be resolved directly.");
-        var entryAddress = _sectionAddresses[(int)symbol.SectionNumber - 1] + (int)symbol.Value;
+        var entryAddress = (IntPtr)(_sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64() + (int)symbol.Value);
         if (RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"Resolved entry point '{LookupSymbolName(symbol)}' at {entryAddress:X}");
         return entryAddress;
@@ -282,17 +304,17 @@ internal class Coff
     {
         if (RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"Executing entry point at address: 0x{entryAddress:X}");
-        //GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>((IntPtr)(_baseAddress.ToInt64() + entryPoint.Value));
+        GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>(entryAddress);
         try
         {
-            //goFunc();
-            var thread = Lib.CreateThread(IntPtr.Zero,
-                                          0,
-                                          entryAddress,
-                                          IntPtr.Zero,
-                                          0,
-                                          IntPtr.Zero);
-            var response = Lib.WaitForSingleObject(thread, 200);
+            goFunc();
+            //var thread = Lib.CreateThread(IntPtr.Zero,
+            //                              0,
+            //                              entryAddress,
+            //                              IntPtr.Zero,
+            //                              0,
+            //                              IntPtr.Zero);
+            //var response = Lib.WaitForSingleObject(thread, 200);
         }
         catch (Exception ex)
         {
