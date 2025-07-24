@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SleepyHollow": {
+      "commandName": "Project",
+      "commandLineArgs": "bof --url c:\\Tmp\\test.o --skip-evasion --debug"
+    }
+  }
+}
