@@ -9,7 +9,27 @@ internal class BeaconObjectExecutor(string file)
     private delegate void GoDelegate();
     public async Task RunAsync()
     {
-        byte[] bofData = null;
+        byte[] bofData =  await RetrieveBeaconObject();
+        
+        if (bofData.Length == 0)
+        {
+            Console.WriteLine("Failed to download BOF data.");
+            Environment.Exit(1);
+        }
+        using var coff = new Coff(bofData);
+        var entryPoint = coff.ResolveEntryPoint("go");
+        try
+        {
+            ExecuteEntryPoint(entryPoint);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error executing BOF: {ex.Message}");
+        }
+    }
+
+    private async Task<byte[]> RetrieveBeaconObject()
+    {
         if (TryParseUrl(file, out var uriLocation))
         {
             if (RuntimeConfig.IsDebugEnabled)
@@ -22,30 +42,16 @@ internal class BeaconObjectExecutor(string file)
                 Environment.Exit(1);
             }
 
-            bofData = await response.Content.ReadAsByteArrayAsync();
+            return await response.Content.ReadAsByteArrayAsync();
         }
         else if (File.Exists(file))
         {
-            bofData = File.ReadAllBytes(file);
+            return File.ReadAllBytes(file);
         }
         else
         {
             Console.WriteLine($"BOF file not found: {file}");
-            return;
-        }
-        if (bofData.Length == 0)
-        {
-            Console.WriteLine("Failed to download BOF data.");
-            Environment.Exit(1);
-        }
-        using var coff = new Coff(bofData);
-        var entryPoint = coff.ResolveEntryPoint("go");
-        try
-        {
-            ExecuteEntryPoint(entryPoint);
-        }catch(Exception ex)
-        {
-            Console.WriteLine($"Error executing BOF: {ex.Message}");
+            return [];
         }
     }
 
