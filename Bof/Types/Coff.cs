@@ -186,18 +186,11 @@ internal class Coff : IDisposable
             functionAddress = _importAddressTable.ResolveLibrary(libraryName, functionName);
         }
 
-        switch (relocation.Type)
-        {
-            case ImageRelocationType.IMAGE_REL_AMD64_REL32:
-                Marshal.WriteInt32(relocationAddress,
-                                       (int)((functionAddress.ToInt64() - 4) - (relocationAddress.ToInt64())));
-                break;
-            default:
-                throw new NotSupportedException($"Unsupported relocation type: {relocation.Type}");
-        }
+        PatchRelocation(relocation, sectionAddress, functionAddress);
         if (RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"Relocated external symbol '{baseSymbolName}' to address: 0x{functionAddress:X} at relocation address: 0x{relocationAddress:X}");
     }
+
 
     private void RelocateInternalSymbol(IntPtr sectionAddress, ImageSymbol symbol, ImageRelocation relocation)
     {
@@ -206,37 +199,39 @@ internal class Coff : IDisposable
         if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_STATIC && symbol.Value != 0)
         {
             symbolOffset = (int)symbol.Value;
-        }
+}
         else if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_EXTERNAL && symbol.SectionNumber != 0)
         {
-            symbolOffset = (int)symbol.Value;
-        }
+    symbolOffset = (int)symbol.Value;
+}
         else
         {
-            symbolOffset = Marshal.ReadInt32(relocationAddress);
+    symbolOffset = Marshal.ReadInt32(relocationAddress);
         }
+    var addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
+        PatchRelocation(relocation, sectionAddress, new IntPtr(addr));
 
-        Int64 addr;
+        if (RuntimeConfig.IsDebugEnabled)
+        Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
+    }
+    private static void PatchRelocation(ImageRelocation relocation, IntPtr sectionAddress, IntPtr symbolAddress)
+    {
+        var relocationAddress = sectionAddress + (int)relocation.VirtualAddress;
         switch (relocation.Type)
         {
             case ImageRelocationType.IMAGE_REL_AMD64_REL32:
 
-                addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
                 Marshal.WriteInt32(relocationAddress,
-                                   (int)((addr - 4) - relocationAddress.ToInt64()));
+                                   (int)((symbolAddress - 4) - relocationAddress.ToInt64()));
 
                 break;
             case ImageRelocationType.IMAGE_REL_AMD64_ADDR32NB:
-                addr = symbolOffset + _sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64();
                 Marshal.WriteInt32(relocationAddress,
-                                   (int)(addr - relocationAddress.ToInt64()));
+                                   (int)(symbolAddress - relocationAddress.ToInt64()));
                 break;
             default:
                 throw new NotSupportedException($"Unsupported relocation type: {relocation.Type}");
         }
-
-        if (RuntimeConfig.IsDebugEnabled)
-            Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
     }
 
     private void SetBOFVariables()
