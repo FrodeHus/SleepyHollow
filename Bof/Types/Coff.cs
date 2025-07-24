@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace SleepyHollow.Bof.Types;
 
@@ -16,6 +15,7 @@ internal class Coff
     private readonly byte[] _bofBytes;
     private readonly string _importPrefix;
     private readonly IntPtr _baseAddress;
+    private readonly uint _totalMemoryAllocated;
     private IntPtr[] _sectionAddresses = [];
     private readonly ImportAddressTable _importAddressTable = new();
 
@@ -42,7 +42,7 @@ internal class Coff
         ReadSymbols(bofBytes);
         ValidateHeaderCounts();
 
-        _baseAddress = WriteSectionsToMemory();
+        (_baseAddress, _totalMemoryAllocated) = WriteSectionsToMemory();
         SetBOFVariables();
         ResolveAllRelocations();
         var entryAddress = ResolveEntryPoint("go");
@@ -53,7 +53,7 @@ internal class Coff
         }
         finally
         {
-            _importAddressTable.Clear();
+            Clear();
         }
     }
     #endregion
@@ -90,7 +90,7 @@ internal class Coff
     #endregion
 
     #region Memory Management
-    private nint WriteSectionsToMemory()
+    private (nint baseAddress, uint totalMemoryAllocated) WriteSectionsToMemory()
     {
         int totalPages = _sectionHeaders.Sum(sectionHeader =>
             sectionHeader.SizeOfRawData == 0 ? 0 : (int)((sectionHeader.SizeOfRawData + Environment.SystemPageSize - 1) / Environment.SystemPageSize));
@@ -126,7 +126,7 @@ internal class Coff
                 Console.WriteLine($"Section '{System.Text.Encoding.ASCII.GetString(sectionHeader.Name)}' allocated at: 0x{sectionAddress:X}, Size: {sectionMemorySize}");
             Marshal.Copy(_bofBytes, sectionOffset, sectionAddress, (int)sectionHeader.SizeOfRawData);
         }
-        return address;
+        return (address, (uint)(pagesAllocated * Environment.SystemPageSize));
     }
 
     private void SetPermissionsForSections()
@@ -265,7 +265,7 @@ internal class Coff
 
     private void SetBOFVariables()
     {
-        foreach(var symbol in _symbols)
+        foreach (var symbol in _symbols)
         {
             var symbolName = LookupSymbolName(symbol);
             if (symbolName == "debug")
@@ -353,6 +353,19 @@ internal class Coff
         {
             handle.Free();
         }
+    }
+
+    private void Clear()
+    {
+        _importAddressTable.Clear();
+        for (var i = 0; i < _sectionHeaders.Count; i++)
+        {
+            var sectionHeader = _sectionHeaders[i];
+            var sectionAddress = _sectionAddresses[i];
+            Lib.VirtualProtect(sectionAddress, sectionHeader.SizeOfRawData, Lib.PAGE_READWRITE, out _);
+        }
+        Lib.ZeroMemory(_baseAddress, (int)_totalMemoryAllocated);
+        Lib.VirtualFree(_baseAddress, 0, Lib.MEM_RELEASE);
     }
     #endregion
 }

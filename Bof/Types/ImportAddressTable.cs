@@ -32,7 +32,7 @@ internal class ImportAddressTable
                 Console.WriteLine($"Resolved function '{functionName}' in library '{libraryName}' at address: 0x{address:X}");
             AddImportAddress($"{libraryName}${functionName}", address);
         }
-        return address;
+        return _importAddresses[$"{libraryName}${functionName}"];
     }
 
     public void Clear()
