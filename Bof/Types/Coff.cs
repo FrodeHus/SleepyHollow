@@ -128,6 +128,20 @@ internal class Coff
         return (address, (uint)(pagesAllocated * Environment.SystemPageSize));
     }
 
+
+    private void Clear()
+    {
+        _importAddressTable.Clear();
+        for (var i = 0; i < _sectionHeaders.Count; i++)
+        {
+            var sectionHeader = _sectionHeaders[i];
+            var sectionAddress = _sectionAddresses[i];
+            Lib.VirtualProtect(sectionAddress, sectionHeader.SizeOfRawData, Lib.PAGE_READWRITE, out _);
+        }
+        Lib.ZeroMemory(_baseAddress, (int)_totalMemoryAllocated);
+        Lib.VirtualFree(_baseAddress, 0, Lib.MEM_RELEASE);
+    }
+
     #endregion
 
     #region Relocation & Entry Point
@@ -280,7 +294,7 @@ internal class Coff
         GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>(entryAddress);
         try
         {
-            if(RuntimeConfig.IsDebugEnabled)
+            if (RuntimeConfig.IsDebugEnabled)
                 Console.WriteLine("==> [BOF Output]");
             goFunc();
         }
@@ -323,17 +337,5 @@ internal class Coff
         }
     }
 
-    private void Clear()
-    {
-        _importAddressTable.Clear();
-        for (var i = 0; i < _sectionHeaders.Count; i++)
-        {
-            var sectionHeader = _sectionHeaders[i];
-            var sectionAddress = _sectionAddresses[i];
-            Lib.VirtualProtect(sectionAddress, sectionHeader.SizeOfRawData, Lib.PAGE_READWRITE, out _);
-        }
-        Lib.ZeroMemory(_baseAddress, (int)_totalMemoryAllocated);
-        Lib.VirtualFree(_baseAddress, 0, Lib.MEM_RELEASE);
-    }
     #endregion
 }
