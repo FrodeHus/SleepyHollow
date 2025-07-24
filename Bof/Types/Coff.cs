@@ -241,19 +241,19 @@ internal class Coff : IDisposable
             var symbolName = LookupSymbolName(symbol);
             if (symbolName == "debug")
             {
-                var symbol_addr = new IntPtr(_sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64() + symbol.Value);
+                var symbolAddress = new IntPtr(_sectionAddresses[(int)symbol.SectionNumber - 1].ToInt64() + symbol.Value);
 
                 if (RuntimeConfig.IsDebugEnabled)
                 {
-                    Marshal.WriteInt32(symbol_addr, 1);
+                    Marshal.WriteInt32(symbolAddress, 1);
                 }
                 else
                 {
-                    Marshal.WriteInt32(symbol_addr, 0);
+                    Marshal.WriteInt32(symbolAddress, 0);
                 }
 
                 if (RuntimeConfig.IsDebugEnabled)
-                    Console.WriteLine($"Set debug variable '{symbolName}' to {(RuntimeConfig.IsDebugEnabled ? 1 : 0)} at address: {symbol_addr:X}");
+                    Console.WriteLine($"Set debug variable '{symbolName}' to {(RuntimeConfig.IsDebugEnabled ? 1 : 0)} at address: {symbolAddress:X}");
             }
         }
     }
