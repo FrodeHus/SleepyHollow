@@ -188,7 +188,7 @@ switch (options["command"])
         if (debugEnabled)
             Console.WriteLine($"Downloading BOF from {bofUrl}...");
         var executor = new BeaconObjectExecutor(bofUrl);
-        executor.Run();
+        await executor.RunAsync();
         break;
     default:
         Console.WriteLine($"Unknown command {options["command"]}");

