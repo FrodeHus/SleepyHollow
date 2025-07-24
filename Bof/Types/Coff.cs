@@ -11,11 +11,13 @@ internal class Coff
     private readonly ImageFileHeader _fileHeader;
     private readonly List<ImageSectionHeader> _sectionHeaders = [];
     private readonly List<ImageSymbol> _symbols = [];
-    private readonly List<SectionAddressInfo> _sectionAddressInfos = [];
     private readonly long _stringTableOffset;
     private readonly byte[] _bofBytes;
     private readonly string _importPrefix;
     private readonly IntPtr _baseAddress;
+    private IntPtr[] _sectionAddresses = [];
+    private readonly ImportAddressTable _importAddressTable = new();
+
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void GoDelegate();
     #endregion
@@ -30,7 +32,8 @@ internal class Coff
             throw new ArgumentException("Invalid BOF bytes provided.");
 
         _bofBytes = bofBytes;
-        _fileHeader = Deserialize<ImageFileHeader>(bofBytes.AsSpan(0, Marshal.SizeOf<ImageFileHeader>()).ToArray());
+
+        _fileHeader = Deserialize<ImageFileHeader>(bofBytes[0..Marshal.SizeOf<ImageFileHeader>()]);
         _importPrefix = _fileHeader.Machine == ImageFileMachine.IMAGE_FILE_MACHINE_AMD64 ? "__imp_" : "__imp__";
         _stringTableOffset = _fileHeader.PointerToSymbolTable + (_fileHeader.NumberOfSymbols * Marshal.SizeOf<ImageSymbol>());
 
@@ -40,9 +43,16 @@ internal class Coff
 
         _baseAddress = WriteSectionsToMemory();
         ResolveAllRelocations();
-        var entryPoint = ResolveEntryPoint("go");
+        var entryAddress = ResolveEntryPoint("go");
         SetPermissionsForSections();
-        ExecuteEntryPoint(entryPoint);
+        try
+        {
+            ExecuteEntryPoint(entryAddress);
+        }
+        finally
+        {
+            _importAddressTable.Clear();
+        }
     }
     #endregion
 
@@ -55,6 +65,7 @@ internal class Coff
             var sectionHeader = Deserialize<ImageSectionHeader>(bofBytes.AsSpan(sectionHeadersOffset + (i * Marshal.SizeOf<ImageSectionHeader>()), Marshal.SizeOf<ImageSectionHeader>()).ToArray());
             _sectionHeaders.Add(sectionHeader);
         }
+        _sectionAddresses = new IntPtr[_sectionHeaders.Count];
     }
 
     private void ReadSymbols(byte[] bofBytes)
@@ -105,38 +116,41 @@ internal class Coff
                                                   (uint)sectionMemorySize,
                                                   Lib.MEM_COMMIT,
                                                   Lib.PAGE_EXECUTE_READWRITE);
+            _sectionAddresses[i] = sectionAddress;
             pagesAllocated += sectionPages;
             if (Lib.GetLastWin32Error() != SystemErrorCodes.ERROR_SUCCESS)
                 throw new InvalidOperationException($"Failed to allocate memory for section '{System.Text.Encoding.ASCII.GetString(sectionHeader.Name)}'. Error: {Lib.GetLastWin32Error()}");
             if (RuntimeConfig.IsDebugEnabled)
                 Console.WriteLine($"Section '{System.Text.Encoding.ASCII.GetString(sectionHeader.Name)}' allocated at: 0x{sectionAddress:X}, Size: {sectionMemorySize}");
             Marshal.Copy(_bofBytes, sectionOffset, sectionAddress, (int)sectionHeader.SizeOfRawData);
-            var updatedSectionHeader = sectionHeader;
-            updatedSectionHeader.PointerToRawData = (uint)(sectionAddress.ToInt64() - address.ToInt64());
-            _sectionHeaders[_sectionHeaders.IndexOf(sectionHeader)] = updatedSectionHeader;
-            _sectionAddressInfos.Add(new SectionAddressInfo(sectionAddress, sectionHeader.Characteristics, sectionMemorySize, System.Text.Encoding.ASCII.GetString(sectionHeader.Name)));
         }
         return address;
     }
 
     private void SetPermissionsForSections()
     {
-        foreach (var section in _sectionAddressInfos)
+        for (var i = 0; i < _sectionHeaders.Count; i++)
         {
-            var (x, r, w) = (section.Characteristics.HasFlag((uint)SectionCharacteristics.IMAGE_SCN_MEM_EXECUTE),
-                             section.Characteristics.HasFlag((uint)SectionCharacteristics.IMAGE_SCN_MEM_READ),
-                             section.Characteristics.HasFlag((uint)SectionCharacteristics.IMAGE_SCN_MEM_WRITE));
+            var section = _sectionHeaders[i];
+            var sectionAddress = _sectionAddresses[i];
+            var sectionName = System.Text.Encoding.ASCII.GetString(section.Name).TrimEnd('\0');
+            int sectionPages = (int)((section.SizeOfRawData + Environment.SystemPageSize - 1) / Environment.SystemPageSize);
+            int sectionMemorySize = sectionPages * Environment.SystemPageSize;
+            var (x, r, w) = (section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_EXECUTE),
+                             section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_READ),
+                             section.Characteristics.HasFlag(SectionCharacteristics.IMAGE_SCN_MEM_WRITE));
             uint pagePermissions = x && r && w ? Lib.PAGE_EXECUTE_READWRITE :
                                   x && r && !w ? Lib.PAGE_EXECUTE_READ :
                                   x && !r && !w ? Lib.PAGE_EXECUTE :
                                   !x && r && w ? Lib.PAGE_READWRITE :
                                   !x && r && !w ? Lib.PAGE_READONLY :
                                   !x && !r && !w ? Lib.PAGE_NOACCESS : 0;
+
             if (pagePermissions == 0)
-                throw new InvalidOperationException($"Invalid page permissions for section: {section.SectionName}");
+                throw new InvalidOperationException($"Invalid page permissions for section: {section.Name}");
             if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Setting permissions for section '{section.SectionName}' at address 0x{section.Address:X}, Size: {section.Size}, Permissions: {pagePermissions}");
-            Lib.VirtualProtect(section.Address, (UIntPtr)section.Size, pagePermissions, out uint _);
+                Console.WriteLine($"Setting permissions for section '{sectionName}' at address 0x{sectionAddress:X}, Size: {sectionMemorySize}, Permissions: {pagePermissions}");
+            Lib.VirtualProtect(sectionAddress, (UIntPtr)sectionMemorySize, pagePermissions, out uint _);
         }
     }
     #endregion
@@ -144,15 +158,17 @@ internal class Coff
     #region Relocation & Entry Point
     private void ResolveAllRelocations()
     {
-        foreach (var sectionHeader in _sectionHeaders)
+        for (var i = 0; i < _sectionHeaders.Count; i++)
         {
+            var sectionHeader = _sectionHeaders[i];
+            var sectionAddress = _sectionAddresses[i];
             if (RuntimeConfig.IsDebugEnabled)
                 Console.WriteLine($"Resolving {sectionHeader.NumberOfRelocations} relocations for section: {System.Text.Encoding.ASCII.GetString(sectionHeader.Name)}");
-            ResolveRelocations(sectionHeader);
+            ResolveRelocations(sectionHeader, sectionAddress);
         }
     }
 
-    private void ResolveRelocations(ImageSectionHeader sectionHeader)
+    private void ResolveRelocations(ImageSectionHeader sectionHeader, IntPtr sectionAddress)
     {
         if (sectionHeader.NumberOfRelocations == 0) return;
         int relocationOffset = (int)sectionHeader.PointerToRelocations;
@@ -167,67 +183,106 @@ internal class Coff
             var symbol = _symbols[(int)relocation.SymbolTableIndex];
             var symbolName = LookupSymbolName(symbol);
             if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Relocation {i}: Symbol Name: {symbolName} - Type: {relocation.Type} - Storage Class: {symbol.StorageClass}");
-            var functionAddress = IntPtr.Zero;
+                Console.WriteLine($"Relocation {i}: Symbol Name: {symbolName} - Type: {symbol.Type} - Storage Class: {symbol.StorageClass}");
             if (symbol.SectionNumber == ImageSectionNumber.IMAGE_SYM_UNDEFINED)
             {
-                if (RuntimeConfig.IsDebugEnabled)
-                    Console.WriteLine($"Relocation {i}: External reference");
-                var baseSymbolName = symbolName.StartsWith(_importPrefix) ? symbolName.Substring(_importPrefix.Length) : symbolName;
-                if (baseSymbolName.Contains("$"))
-                {
-                    var parts = baseSymbolName.Split('$');
-                    var dllName = parts[0];
-                    var functionName = parts[1];
-                    if (RuntimeConfig.IsDebugEnabled)
-                        Console.WriteLine($"Relocation {i}: DLL: {dllName}, Function: {functionName}");
-                    functionAddress = ResolveExternalReference(dllName, functionName);
-                }
+                RelocateExternalSymbol(sectionAddress, symbol, relocation);
             }
             else
             {
-                if (RuntimeConfig.IsDebugEnabled)
-                    Console.WriteLine($"Relocation {i}: Internal reference");
-            }
-            IntPtr relocationAddress = _baseAddress + (int)sectionHeader.PointerToRawData + (int)relocation.VirtualAddress;
-            var currentValue = Marshal.ReadInt32(relocationAddress);
-            if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Relocation {i}: Current Value at 0x{relocationAddress:X}: {currentValue:X}");
-            switch (relocation.Type)
-            {
-                case ImageRelocationType.IMAGE_REL_AMD64_REL32:
-                    Marshal.WriteInt32(
-                        relocationAddress,
-                        (int)((functionAddress.ToInt64() - 4) - (relocationAddress.ToInt64())));
-                    break;
-                case ImageRelocationType.IMAGE_REL_AMD64_ADDR32NB:
-                    var addr = currentValue + (int)_sectionHeaders[(int)symbol.SectionNumber - 1].PointerToRawData;
-                    Marshal.WriteInt32(
-                        relocationAddress,
-                        (int)(addr - relocationAddress.ToInt64()));
-                    break;
-                default:
-                    throw new NotSupportedException($"Unsupported relocation type: {relocation.Type}");
+                RelocateInternalSymbol(symbol, relocation);
             }
         }
     }
 
-    private ImageSymbol ResolveEntryPoint(string entryPointName)
+    private void RelocateExternalSymbol(IntPtr sectionAddress, ImageSymbol symbol, ImageRelocation relocation)
+    {
+        if (symbol.SectionNumber != ImageSectionNumber.IMAGE_SYM_UNDEFINED)
+            throw new InvalidOperationException($"Symbol '{LookupSymbolName(symbol)}' is not an external reference.");
+
+        var relocationAddress = sectionAddress + (int)relocation.VirtualAddress;
+
+        var baseSymbolName = LookupSymbolName(symbol).StartsWith(_importPrefix) ? LookupSymbolName(symbol).Substring(_importPrefix.Length) : LookupSymbolName(symbol);
+        IntPtr functionAddress = IntPtr.Zero;
+        if (baseSymbolName.Contains('$'))
+        {
+            var parts = baseSymbolName.Split('$');
+            var libraryName = parts[0];
+            var functionName = parts[1];
+            functionAddress = _importAddressTable.ResolveLibrary(libraryName, functionName);
+        }
+
+        switch (relocation.Type)
+        {
+            case ImageRelocationType.IMAGE_REL_AMD64_REL32:
+                Marshal.WriteInt32(relocationAddress,
+                                       (int)((functionAddress.ToInt64() - 4) - (relocationAddress.ToInt64())));
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported relocation type: {relocation.Type}");
+        }
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Relocated external symbol '{baseSymbolName}' to address: 0x{functionAddress:X} at relocation address: 0x{relocationAddress:X}");
+    }
+
+    private void RelocateInternalSymbol(ImageSymbol symbol, ImageRelocation relocation)
+    {
+        var relocationAddress = _sectionAddresses[(int)symbol.SectionNumber - 1] + (int)relocation.VirtualAddress;
+        int symbolOffset;
+        if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_STATIC && symbol.Value != 0)
+        {
+            symbolOffset = (int)symbol.Value;
+        }
+        else if (symbol.StorageClass == ImageSymbolStorageClass.IMAGE_SYM_CLASS_EXTERNAL && symbol.SectionNumber != 0)
+        {
+            symbolOffset = (int)symbol.Value;
+        }
+        else
+        {
+            symbolOffset = Marshal.ReadInt32(relocationAddress);
+        }
+
+        IntPtr addr;
+        switch (relocation.Type)
+        {
+            case ImageRelocationType.IMAGE_REL_AMD64_REL32:
+
+                addr = symbolOffset + (int)_sectionAddresses[(int)symbol.SectionNumber - 1];
+                Marshal.WriteInt32(relocationAddress,
+                                   (int)((addr - 4) - relocationAddress.ToInt64()));
+
+                break;
+            case ImageRelocationType.IMAGE_REL_AMD64_ADDR32NB:
+                addr = symbolOffset + (int)_sectionAddresses[(int)symbol.SectionNumber - 1];
+                Marshal.WriteInt32(relocationAddress,
+                                   (int)(addr - relocationAddress.ToInt64()));
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported relocation type: {relocation.Type}");
+        }
+
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Relocated internal symbol '{LookupSymbolName(symbol)}' to address: 0x{addr:X} at relocation address: 0x{relocationAddress:X}");
+    }
+
+    private IntPtr ResolveEntryPoint(string entryPointName)
     {
         if (string.IsNullOrEmpty(entryPointName))
             throw new ArgumentException("Entry point name cannot be null or empty.");
         var symbol = _symbols.FirstOrDefault(s => LookupSymbolName(s) == entryPointName);
         if (symbol.SectionNumber == ImageSectionNumber.IMAGE_SYM_UNDEFINED)
             throw new InvalidOperationException($"Entry point '{entryPointName}' is an external reference and cannot be resolved directly.");
-        return symbol;
+        var entryAddress = _sectionAddresses[(int)symbol.SectionNumber - 1] + (int)symbol.Value;
+        if (RuntimeConfig.IsDebugEnabled)
+            Console.WriteLine($"Resolved entry point '{LookupSymbolName(symbol)}' at {entryAddress:X}");
+        return entryAddress;
     }
 
-    private void ExecuteEntryPoint(ImageSymbol entryPoint)
+    private void ExecuteEntryPoint(IntPtr entryAddress)
     {
-        var entryAddress = (IntPtr)(_baseAddress.ToInt64() + entryPoint.Value + _sectionHeaders[(int)entryPoint.SectionNumber - 1].PointerToRawData);
         if (RuntimeConfig.IsDebugEnabled)
-            Console.WriteLine($"Executing entry point: {LookupSymbolName(entryPoint)} at address: 0x{entryAddress:X}");
-        GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>((IntPtr)(_baseAddress.ToInt64() + entryPoint.Value));
+            Console.WriteLine($"Executing entry point at address: 0x{entryAddress:X}");
+        //GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>((IntPtr)(_baseAddress.ToInt64() + entryPoint.Value));
         try
         {
             //goFunc();
@@ -249,19 +304,6 @@ internal class Coff
     #endregion
 
     #region Symbol & Utility
-    private static IntPtr ResolveExternalReference(string dllName, string functionName)
-    {
-        var dllHandle = Lib.LoadLibrary(dllName);
-        if (dllHandle == IntPtr.Zero)
-            throw new InvalidOperationException($"Failed to load DLL '{dllName}'. Error: {Marshal.GetLastWin32Error()}");
-        var functionAddress = Lib.GetProcAddress(dllHandle, functionName);
-        if (functionAddress == IntPtr.Zero)
-            throw new InvalidOperationException($"Failed to get address of function '{functionName}' in DLL '{dllName}'. Error: {Marshal.GetLastWin32Error()}");
-        if (RuntimeConfig.IsDebugEnabled)
-            Console.WriteLine($"Resolved function '{functionName}' in DLL '{dllName}' at address: 0x{functionAddress:X}");
-        return functionAddress;
-    }
-
     private string LookupSymbolName(ImageSymbol symbol)
     {
         if (symbol.Name[0] == 0)

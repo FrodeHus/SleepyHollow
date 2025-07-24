@@ -29,9 +29,16 @@ internal class ImportAddressTable
                 throw new InvalidOperationException($"Function '{functionName}' not found in library '{libraryName}'.");
             }
             if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine($"Resolved function '{functionName}' in DLL '{libraryName}' at address: 0x{address:X}");
+                Console.WriteLine($"Resolved function '{functionName}' in library '{libraryName}' at address: 0x{address:X}");
             AddImportAddress($"{libraryName}${functionName}", address);
         }
         return address;
+    }
+
+    public void Clear()
+    {
+        _importAddresses.Clear();
+        Lib.ZeroMemory(_iatAddress, (2 * Environment.SystemPageSize));
+        Lib.VirtualFree(_iatAddress, 0, Lib.MEM_RELEASE);
     }
 }

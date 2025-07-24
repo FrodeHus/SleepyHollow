@@ -155,6 +155,7 @@ internal static partial class Lib
     internal static UInt32 MEM_COMMIT = 0x1000;
     internal static UInt32 MEM_RESERVE = 0x2000;
     internal static UInt32 MEM_COMMIT_AND_RESERVE = 0x3000;
+    internal static UInt32 MEM_RELEASE = 0x8000;
 
     [LibraryImport(
         "kernel32.dll",
@@ -242,6 +243,10 @@ internal static partial class Lib
 
     [LibraryImport("kernel32", SetLastError = true)]
     internal static partial IntPtr VirtualAlloc(IntPtr lpStartAddr, uint size, uint flAllocationType, uint flProtect);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool VirtualFree(IntPtr pAddress, uint size, uint freeType);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial IntPtr CreateRemoteThread(
@@ -437,6 +442,9 @@ internal static partial class Lib
         UInt32 flNewProtect,
         out UInt32 lpflOldProtect
     );
+    [DllImport("Kernel32.dll", EntryPoint = "RtlZeroMemory", SetLastError = false)]
+    public static extern void ZeroMemory(IntPtr dest, int size);
+
     [DllImport("kernel32", SetLastError = true)]
     public static extern IntPtr CreateThread(IntPtr lpThreadAttributes,
                                              uint dwStackSize,
