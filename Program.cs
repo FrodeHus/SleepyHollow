@@ -1,4 +1,5 @@
 using SleepyHollow;
+using SleepyHollow.Bof;
 using SleepyHollow.Bof.Types;
 
 #if !HEADLESS
@@ -186,13 +187,8 @@ switch (options["command"])
         var bofUrl = options["url"];
         if (debugEnabled)
             Console.WriteLine($"Downloading BOF from {bofUrl}...");
-        var bofData = File.ReadAllBytes(bofUrl);
-        if (bofData.Length == 0)
-        {
-            Console.WriteLine("Failed to download BOF data.");
-            Environment.Exit(1);
-        }
-        var coff = new Coff(bofData);
+        var executor = new BeaconObjectExecutor(bofUrl);
+        executor.Run();
         break;
     default:
         Console.WriteLine($"Unknown command {options["command"]}");

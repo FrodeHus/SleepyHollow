@@ -5,7 +5,7 @@ namespace SleepyHollow.Bof.Types;
 /// <summary>
 /// Represents a COFF (Common Object File Format) loader and executor for BOF modules.
 /// </summary>
-internal class Coff
+internal class Coff : IDisposable
 {
     #region Fields
     private readonly ImageFileHeader _fileHeader;
@@ -19,8 +19,6 @@ internal class Coff
     private IntPtr[] _sectionAddresses = [];
     private readonly ImportAddressTable _importAddressTable = new();
 
-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void GoDelegate();
     #endregion
 
     #region Constructor
@@ -45,15 +43,6 @@ internal class Coff
         (_baseAddress, _totalMemoryAllocated) = WriteSectionsToMemory();
         SetBOFVariables();
         ResolveAllRelocations();
-        var entryAddress = ResolveEntryPoint("go");
-        try
-        {
-            ExecuteEntryPoint(entryAddress);
-        }
-        finally
-        {
-            Clear();
-        }
     }
     #endregion
 
@@ -129,7 +118,7 @@ internal class Coff
     }
 
 
-    private void Clear()
+    public void Dispose()
     {
         _importAddressTable.Clear();
         for (var i = 0; i < _sectionHeaders.Count; i++)
@@ -274,7 +263,7 @@ internal class Coff
         }
     }
 
-    private IntPtr ResolveEntryPoint(string entryPointName)
+    public IntPtr ResolveEntryPoint(string entryPointName)
     {
         if (string.IsNullOrEmpty(entryPointName))
             throw new ArgumentException("Entry point name cannot be null or empty.");
@@ -287,24 +276,7 @@ internal class Coff
         return entryAddress;
     }
 
-    private void ExecuteEntryPoint(IntPtr entryAddress)
-    {
-        if (RuntimeConfig.IsDebugEnabled)
-            Console.WriteLine($"Executing entry point at address: 0x{entryAddress:X}");
-        GoDelegate goFunc = Marshal.GetDelegateForFunctionPointer<GoDelegate>(entryAddress);
-        try
-        {
-            if (RuntimeConfig.IsDebugEnabled)
-                Console.WriteLine("==> [BOF Output]");
-            goFunc();
-        }
-        catch (Exception ex)
-        {
-            var error = Lib.GetLastWin32Error();
-            Console.WriteLine($"Error executing entry point: {ex.Message} - {error}");
-            throw;
-        }
-    }
+    
     #endregion
 
     #region Symbol & Utility
